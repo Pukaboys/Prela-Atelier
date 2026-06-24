@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────────
+
+enum OrderStatus {
+  pending
+  confirmed
+  shipped
+  delivered
+  cancelled
+}
+
+enum BespokeEnquiryStatus {
+  new
+  read
+  replied
+  closed
+}
+
+// PromoType stored as VARCHAR in DB — validated at app layer via Zod
+// enum PromoType { percentage fixed }
+
+// ── Models ─────────────────────────────────────────────────────────────────
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("admins")
+}
+
+model Product {
+  id          Int            @id @default(autoincrement())
+  name        String         @db.VarChar(255)
+  slug        String         @unique @db.VarChar(255)
+  description String?        @db.Text
+  priceEur    Decimal        @db.Decimal(10, 2) @map("price_eur")
+  imagePath   String?        @db.VarChar(500) @map("image_path")
+  badge       String?        @db.VarChar(50)
+  stock       Int            @default(99)
+  featured    Boolean        @default(false)
+  materialId  Int?           @map("material_id")
+  material    Material?      @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  orderItems  OrderItem[]
+  images      ProductImage[]
+
+  @@map("products")
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  productId Int     @map("product_id")
+  url       String  @db.VarChar(500)
+  sortOrder Int     @default(0) @map("sort_order")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  orderCode     String      @unique @db.VarChar(20) @map("order_code")
+  customerName  String      @db.VarChar(255) @map("customer_name")
+  customerEmail String      @db.VarChar(255) @map("customer_email")
+  customerPhone String?     @db.VarChar(50) @map("customer_phone")
+  address       String      @db.Text
+  city          String      @db.VarChar(100)
+  postcode      String      @db.VarChar(20)
+  country       String      @default("France") @db.VarChar(100)
+  subtotal      Decimal     @db.Decimal(10, 2)
+  shipping      Decimal     @default(0) @db.Decimal(10, 2)
+  total         Decimal     @db.Decimal(10, 2)
+  status        OrderStatus @default(pending)
+  notes         String?     @db.Text
+  promoCode     String?     @db.VarChar(50) @map("promo_code")
+  discount      Decimal     @default(0) @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int     @map("order_id")
+  productId Int     @map("product_id")
+  name      String  @db.VarChar(255)
+  priceEur  Decimal @db.Decimal(10, 2) @map("price_eur")
+  quantity  Int     @default(1)
+  subtotal  Decimal @db.Decimal(10, 2)
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("order_items")
+}
+
+model Material {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(100)
+  origin      String    @db.VarChar(100)
+  description String    @db.Text
+  hardness    String?   @db.VarChar(50)
+  tone        String?   @db.VarChar(50)
+  veining     String?   @db.VarChar(50)
+  pricePerM2Eur Decimal? @db.Decimal(10, 2) @map("price_per_square_meter")
+  imagePath   String?   @db.VarChar(500) @map("image_path")
+  sortOrder   Int       @default(0) @map("sort_order")
+  visible     Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  products    Product[]
+
+  @@map("materials")
+}
+
+model BespokeEnquiry {
+  id          Int                  @id @default(autoincrement())
+  name        String               @db.VarChar(150)
+  email       String               @db.VarChar(150)
+  type        String?              @db.VarChar(100)
+  budget      String?              @db.VarChar(100)
+  description String               @db.Text
+  timeline    String?              @db.VarChar(200)
+  status      BespokeEnquiryStatus @default(new)
+  notes       String?              @db.Text
+  createdAt   DateTime             @default(now()) @map("created_at")
+
+  @@map("bespoke_enquiries")
+}
+
+model PromoCode {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique @db.VarChar(50)
+  type      String    @db.VarChar(20)
+  value     Decimal   @db.Decimal(10, 2)
+  minOrder  Decimal   @default(0) @db.Decimal(10, 2) @map("min_order")
+  maxUses   Int?      @map("max_uses")
+  usedCount Int       @default(0) @map("used_count")
+  expiresAt DateTime? @map("expires_at")
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("promo_codes")
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  email     String   @db.VarChar(255)
+  subject   String?  @db.VarChar(100)
+  message   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("contact_messages")
+}
+
+model Setting {
+  key       String   @id @db.VarChar(100)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

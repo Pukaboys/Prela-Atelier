@@ -1,0 +1,97 @@
+workflows:
+  prela-ios-simulator:
+    name: Prela Atelier iOS Simulator Build
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    labels:
+      - ios
+      - simulator
+      - expo
+    environment:
+      vars:
+        EXPO_PROJECT_ROOT: mobile
+        EXPO_PUBLIC_API_URL: https://www.prela-atelier.com
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          cd "$CM_BUILD_DIR/$EXPO_PROJECT_ROOT"
+          npm ci
+
+      - name: Run Expo prebuild for iOS
+        script: |
+          cd "$CM_BUILD_DIR/$EXPO_PROJECT_ROOT"
+          npx expo prebuild --platform ios --non-interactive
+
+      - name: Patch generated Info.plist
+        script: |
+          cd "$CM_BUILD_DIR/$EXPO_PROJECT_ROOT"
+          WORKSPACE_PATH=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -n 1)
+
+          if [ -z "$WORKSPACE_PATH" ]; then
+            echo "Could not find the generated iOS workspace after Expo prebuild."
+            exit 1
+          fi
+
+          WORKSPACE_NAME=$(basename "$WORKSPACE_PATH")
+          SCHEME_NAME="${WORKSPACE_NAME%.xcworkspace}"
+          PLIST_PATH="ios/$SCHEME_NAME/Info.plist"
+          PLIST_BUDDY=/usr/libexec/PlistBuddy
+
+          if [ ! -f "$PLIST_PATH" ]; then
+            echo "Could not find Info.plist at $PLIST_PATH"
+            exit 1
+          fi
+
+          $PLIST_BUDDY -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST_PATH" || \
+          $PLIST_BUDDY -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST_PATH"
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd "$CM_BUILD_DIR/$EXPO_PROJECT_ROOT/ios"
+          pod install
+
+      - name: Build iOS simulator app
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR/$EXPO_PROJECT_ROOT"
+
+          WORKSPACE_PATH=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -n 1)
+          if [ -z "$WORKSPACE_PATH" ]; then
+            echo "Could not find the generated iOS workspace."
+            exit 1
+          fi
+
+          WORKSPACE_NAME=$(basename "$WORKSPACE_PATH")
+          SCHEME_NAME="${WORKSPACE_NAME%.xcworkspace}"
+          OUTPUT_DIR="$CM_BUILD_DIR/$EXPO_PROJECT_ROOT/build/ios-simulator"
+          DERIVED_DATA_PATH="$OUTPUT_DIR/DerivedData"
+
+          mkdir -p "$OUTPUT_DIR" /tmp/xcodebuild_logs
+
+          xcodebuild \
+            -workspace "$CM_BUILD_DIR/$EXPO_PROJECT_ROOT/ios/$WORKSPACE_NAME" \
+            -scheme "$SCHEME_NAME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | tee /tmp/xcodebuild_logs/ios-simulator-build.log
+
+          APP_PATH=$(find "$DERIVED_DATA_PATH/Build/Products" -maxdepth 2 -name "*.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Could not find the built simulator app."
+            exit 1
+          fi
+
+          APP_NAME=$(basename "$APP_PATH")
+          cp -R "$APP_PATH" "$OUTPUT_DIR/$APP_NAME"
+          tar -C "$OUTPUT_DIR" -czf "$OUTPUT_DIR/${SCHEME_NAME}-ios-simulator.tar.gz" "$APP_NAME"
+
+    artifacts:
+      - mobile/build/ios-simulator/*.tar.gz
+      - mobile/build/ios-simulator/*.app
+      - /tmp/xcodebuild_logs/*.log
+      - mobile/build/ios-simulator/DerivedData/**/Build/**/*.app
+      - mobile/build/ios-simulator/DerivedData/**/Build/**/*.dSYM
