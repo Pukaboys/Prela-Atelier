@@ -77,6 +77,7 @@ export function CheckoutForm({ cart, subtotal, currencyOptions }: Props) {
   }, [])
 
   const [error, setError] = useState('')
+  const [paymentNotice, setPaymentNotice] = useState('')
   const [processing, setProcessing] = useState(false)
   const [promoInput, setPromoInput] = useState('')
   const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number } | null>(null)
@@ -108,6 +109,7 @@ export function CheckoutForm({ cart, subtotal, currencyOptions }: Props) {
       return
     }
     setError('')
+    setPaymentNotice('')
     setProcessing(true)
     try {
       const res = await fetch('/api/card-payments/create-session', {
@@ -115,9 +117,13 @@ export function CheckoutForm({ cart, subtotal, currencyOptions }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const data = await res.json() as { redirectUrl?: string; error?: string }
+      const data = await res.json() as { redirectUrl?: string; message?: string; error?: string }
       if (!res.ok) {
         setError(data.error ?? dictionary.checkout.failedToPlaceOrder)
+        return
+      }
+      if (data.message) {
+        setPaymentNotice(data.message)
         return
       }
       if (!data.redirectUrl) {
@@ -249,6 +255,11 @@ export function CheckoutForm({ cart, subtotal, currencyOptions }: Props) {
             </div>
 
             {error && <div className="flash-error mt-6">{error}</div>}
+            {paymentNotice && (
+              <div className="mt-6 border border-green-200 bg-green-50 px-4 py-3 font-sans text-sm text-green-800">
+                {paymentNotice}
+              </div>
+            )}
 
             <div className="mt-10">
               <h2 className="font-serif text-2xl text-stone mb-6">{dictionary.checkout.payment}</h2>

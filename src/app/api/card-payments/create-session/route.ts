@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { normalizeCartItems } from '@/lib/cart'
 import { getSession } from '@/lib/session'
+import { hasVisaClickToPayConfig, visaRequest } from '@/lib/visa'
 import { assertCartInventoryAvailable, InventoryError } from '@/server/services/inventory-service'
 import { calculateOrderAmounts } from '@/server/services/order-service'
 
@@ -15,15 +16,6 @@ const schema = z.object({
   country: z.string().min(1).max(100).default('France'),
   notes: z.string().max(1000).optional().default(''),
 })
-
-function hasVisaSandboxConfig() {
-  return Boolean(
-    process.env.VISA_API_BASE_URL &&
-      process.env.VISA_API_USERNAME &&
-      (process.env.VISA_CLIENT_CERT_PEM || process.env.VISA_CLIENT_CERT_PATH) &&
-      (process.env.VISA_CLIENT_KEY_PEM || process.env.VISA_CLIENT_KEY_PATH),
-  )
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,11 +40,11 @@ export async function POST(request: NextRequest) {
       appliedPromo: session.appliedPromo,
     })
 
-    if (!hasVisaSandboxConfig()) {
+    if (!hasVisaClickToPayConfig()) {
       return NextResponse.json(
         {
           error:
-            'Visa sandbox is almost ready. Add the Visa certificate, private key, and username in Vercel, then redeploy.',
+            'Visa sandbox is almost ready. Add the Visa API key, shared secret, certificate, and private key in Vercel, then redeploy.',
           amount: total,
           currency: 'EUR',
         },
@@ -60,15 +52,46 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(
-      {
-        error:
-          'Visa sandbox credentials are loaded. The checkout connection is waiting for the Click to Pay API endpoint details from Visa.',
-        amount: total,
-        currency: 'EUR',
+    const apiKey = process.env.VISA_API_KEY!
+    const identityLookup = await visaRequest<{
+      consumerPresent1?: boolean
+      consumerStatus?: string
+      reason?: string
+      message?: string
+    }>({
+      resourcePath: '/src/v1/identities/lookup',
+      body: {
+        srcClientId: apiKey,
+        consumerIdentity: {
+          identityType: 'EMAIL_ADDRESS',
+          identityValue: parsed.data.email,
+        },
       },
-      { status: 501 },
-    )
+    })
+
+    if (identityLookup.status < 200 || identityLookup.status >= 300) {
+      return NextResponse.json(
+        {
+          error: identityLookup.body?.message ?? 'Visa sandbox rejected the Click to Pay identity lookup.',
+          visaStatus: identityLookup.status,
+          visaReason: identityLookup.body?.reason,
+          amount: total,
+          currency: 'EUR',
+        },
+        { status: 502 },
+      )
+    }
+
+    return NextResponse.json({
+      message: identityLookup.body.consumerPresent1
+        ? 'Visa sandbox connection works. This customer appears to have a Click to Pay profile.'
+        : 'Visa sandbox connection works. This customer does not appear to have a Click to Pay profile yet.',
+      visaStatus: identityLookup.status,
+      consumerPresent: Boolean(identityLookup.body.consumerPresent1),
+      consumerStatus: identityLookup.body.consumerStatus ?? null,
+      amount: total,
+      currency: 'EUR',
+    })
   } catch (err) {
     if (err instanceof InventoryError) {
       return NextResponse.json({ error: err.message }, { status: 409 })

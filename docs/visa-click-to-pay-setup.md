@@ -49,6 +49,8 @@ Use these in `.env`:
 ```env
 VISA_API_BASE_URL="https://sandbox.api.visa.com"
 VISA_API_USERNAME="your-visa-project-username"
+VISA_API_KEY="your-x-pay-api-key"
+VISA_SHARED_SECRET="your-x-pay-shared-secret"
 VISA_CLIENT_CERT_PATH="./secrets/visa/cert.pem"
 VISA_CLIENT_KEY_PATH="./secrets/visa/private-key.pem"
 VISA_CLIENT_KEY_PASSPHRASE=""
@@ -76,3 +78,11 @@ To complete the integration, collect these from the Visa portal:
 - response payload example
 - whether the API uses only Two-Way SSL or also requires X-Pay Token
 - sandbox test card/user data
+
+The first sandbox call wired in the app is:
+
+```text
+POST /src/v1/identities/lookup?apikey=...
+```
+
+It uses the checkout email address to verify that Visa authentication and Click to Pay sandbox connectivity work. It does not charge or authorize payment.
