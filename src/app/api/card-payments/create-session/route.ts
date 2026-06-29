@@ -58,6 +58,13 @@ export async function POST(request: NextRequest) {
       consumerStatus?: string
       reason?: string
       message?: string
+      status?: string
+      errorDetail?: Array<{
+        reason?: string
+        message?: string
+        source?: string
+        sourceType?: string
+      }>
     }>({
       resourcePath: '/src/v1/identities/lookup',
       body: {
@@ -70,11 +77,24 @@ export async function POST(request: NextRequest) {
     })
 
     if (identityLookup.status < 200 || identityLookup.status >= 300) {
+      const detail = identityLookup.body?.errorDetail?.[0]
+      const detailText = [
+        identityLookup.body?.reason,
+        detail?.reason,
+        detail?.source,
+        detail?.message,
+      ].filter(Boolean).join(' - ')
+
       return NextResponse.json(
         {
-          error: identityLookup.body?.message ?? 'Visa sandbox rejected the Click to Pay identity lookup.',
+          error: [
+            identityLookup.body?.message ?? 'Visa sandbox rejected the Click to Pay identity lookup.',
+            detailText,
+          ].filter(Boolean).join(' '),
           visaStatus: identityLookup.status,
           visaReason: identityLookup.body?.reason,
+          visaMessage: identityLookup.body?.message,
+          visaErrorDetail: identityLookup.body?.errorDetail ?? [],
           amount: total,
           currency: 'EUR',
         },

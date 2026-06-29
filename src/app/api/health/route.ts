@@ -12,6 +12,8 @@ export async function GET() {
     SESSION_SECRET: process.env.SESSION_SECRET ? 'set' : 'MISSING (using fallback)',
     VISA_API_BASE_URL: process.env.VISA_API_BASE_URL ? 'set' : 'MISSING',
     VISA_API_USERNAME: process.env.VISA_API_USERNAME ? 'set' : 'MISSING',
+    VISA_API_KEY: process.env.VISA_API_KEY ? 'set' : 'MISSING',
+    VISA_SHARED_SECRET: process.env.VISA_SHARED_SECRET ? 'set' : 'MISSING',
     VISA_CLIENT_CERT: hasVisaCert ? 'set' : 'MISSING',
     VISA_CLIENT_KEY: hasVisaKey ? 'set' : 'MISSING',
     VISA_CA_BUNDLE: hasVisaCaBundle ? 'set' : 'MISSING',
@@ -34,6 +36,8 @@ export async function GET() {
     process.env.DATABASE_URL &&
     process.env.VISA_API_BASE_URL &&
     process.env.VISA_API_USERNAME &&
+    process.env.VISA_API_KEY &&
+    process.env.VISA_SHARED_SECRET &&
     hasVisaCert &&
     hasVisaKey
   return NextResponse.json(

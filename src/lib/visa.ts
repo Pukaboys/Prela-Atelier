@@ -5,6 +5,7 @@ import https from 'https'
 type VisaJsonResponse<T> = {
   status: number
   body: T
+  rawBody: string
 }
 
 function readSecret({
@@ -123,8 +124,13 @@ export async function visaRequest<TResponse>({
         res.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
         res.on('end', () => {
           const text = Buffer.concat(chunks).toString('utf8')
-          const parsed = text ? JSON.parse(text) : null
-          resolve({ status: res.statusCode ?? 0, body: parsed as TResponse })
+          let parsed: unknown = null
+          try {
+            parsed = text ? JSON.parse(text) : null
+          } catch {
+            parsed = { message: text }
+          }
+          resolve({ status: res.statusCode ?? 0, body: parsed as TResponse, rawBody: text })
         })
       },
     )
