@@ -33,7 +33,7 @@ const FAQS = [
       },
       {
         question: 'Which payment methods are available?',
-        answer: 'Available payment methods may include PayPal, card payment, or bank transfer depending on checkout configuration and destination. Bank transfer orders are confirmed after payment is received.',
+        answer: 'Checkout is prepared for Visa and Mastercard card payments through the approved official card-payment gateway. Prela Atelier does not store full card numbers on its servers.',
       },
       {
         question: 'Can I download an invoice?',

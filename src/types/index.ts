@@ -22,7 +22,6 @@ export interface SessionData {
   sessionNonce?: string
   cart?: CartItem[]
   viewedProductIds?: number[]
-  stripePendingForm?: CheckoutFormData
   pendingOrder?: CheckoutFormData
   appliedPromo?: AppliedPromo
   customOrderQuote?: {

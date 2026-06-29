@@ -135,60 +135,6 @@ export async function sendOrderConfirmation(opts: {
   await send(opts.to, `Order confirmed — ${opts.orderCode}`, layout(body))
 }
 
-// ── Bank transfer payment instructions (to customer on order placement) ──────
-export async function sendBankTransferInstructions(opts: {
-  to: string
-  customerName: string
-  orderCode: string
-  items: OrderItem[]
-  shipping: number
-  total: number
-  bankAccountName: string
-  bankIban: string
-  bankName: string
-} & MoneyDisplayOptions) {
-  const firstName = opts.customerName.split(' ')[0]
-  const rows = opts.items
-    .map(
-      (i) => `<tr><td>${i.name} × ${i.quantity}</td><td class="right">${money(i.subtotal, opts.currencyOptions)}</td></tr>`
-    )
-    .join('')
-
-  const body = `
-    <p class="eyebrow">Order Received</p>
-    <h1 class="title">Thank you, ${firstName}.</h1>
-    <p>Your order has been received. To complete your purchase, please transfer the exact amount below to our bank account using your order code as the payment reference.</p>
-    <hr class="divider">
-    <p class="eyebrow">Order Reference</p>
-    <p><span class="badge">${opts.orderCode}</span></p>
-    <hr class="divider">
-    <p class="eyebrow">Order Summary</p>
-    <table class="table">
-      <tbody>
-        ${rows}
-        <tr><td style="padding-top:12px;border-top:1px solid #e8e4de;">Shipping</td><td class="right" style="padding-top:12px;border-top:1px solid #e8e4de;">${opts.shipping === 0 ? 'Free' : money(opts.shipping, opts.currencyOptions)}</td></tr>
-        <tr class="total"><td><strong>Amount to Transfer</strong></td><td class="right"><strong>${money(opts.total, opts.currencyOptions)}</strong></td></tr>
-      </tbody>
-    </table>
-    <hr class="divider">
-    <p class="eyebrow">Bank Transfer Details</p>
-    <table class="table">
-      <tbody>
-        <tr><td>Account Name</td><td class="right"><strong>${opts.bankAccountName}</strong></td></tr>
-        <tr><td>IBAN</td><td class="right"><strong style="font-family:monospace;letter-spacing:0.05em;">${opts.bankIban}</strong></td></tr>
-        <tr><td>Bank</td><td class="right">${opts.bankName}</td></tr>
-        <tr><td>Reference / Description</td><td class="right"><strong>${opts.orderCode}</strong></td></tr>
-      </tbody>
-    </table>
-    <hr class="divider">
-    <a href="${invoiceUrl(opts.orderCode, opts.currencyOptions)}" class="btn">View Invoice</a>
-    <hr class="divider">
-    <p>Once we receive your transfer, we will confirm your order and begin preparing your piece. If you have any questions, reply to this email or reach us at <a href="mailto:hello@prela-atelier.com" style="color:#b08d57;">hello@prela-atelier.com</a>.</p>
-  `
-
-  await send(opts.to, `Order received — ${opts.orderCode}`, layout(body))
-}
-
 // ── New order alert (to admin) ────────────────────────────────────────────────
 export async function sendNewOrderAlert(opts: {
   customerName: string

@@ -299,7 +299,6 @@ export async function updateOrderStatus(orderId: number, status: OrderStatusInpu
 
   return toSerializableOrder(order)
 }
-
 export async function updateProductionStage(orderId: number, stage: ProductionStage) {
   const existing = await prisma.order.findUnique({
     where: { id: orderId },
@@ -343,73 +342,4 @@ export async function updateProductionPriority(orderId: number, priority: Produc
   })
 
   return toSerializableOrder(order)
-}
-
-export async function createPendingBankTransferOrder({
-  form,
-  cart,
-  appliedPromo,
-}: {
-  form: OrderFormInput
-  cart: CartItem[]
-  appliedPromo?: AppliedPromo
-}) {
-  const { settings, subtotal, discount, shipping, total } = await calculateOrderAmounts({
-    country: form.country,
-    cart,
-    appliedPromo,
-  })
-  const orderCode = generateOrderCode()
-
-  await prisma.$transaction(async (tx) => {
-    await assertCartInventoryAvailable(cart, tx)
-
-    const order = await tx.order.create({
-      data: {
-        orderCode,
-        customerName: form.name,
-        customerEmail: form.email,
-        customerPhone: form.phone || null,
-        address: form.address,
-        city: form.city,
-        postcode: form.postcode,
-        country: form.country,
-        subtotal,
-        shipping,
-        total,
-        status: 'pending',
-        notes: buildOrderNotes(form.notes || null, 'Design'),
-        promoCode: appliedPromo?.code ?? null,
-        discount,
-      },
-    })
-
-    await tx.orderItem.createMany({
-      data: cart.map((item) => ({
-        orderId: order.id,
-        productId: item.productId,
-        name: buildOrderItemName(item),
-        priceEur: item.price,
-        quantity: item.quantity,
-        subtotal: item.price * item.quantity,
-      })),
-    })
-
-    if (appliedPromo?.code) {
-      await tx.promoCode.update({
-        where: { code: appliedPromo.code },
-        data: { usedCount: { increment: 1 } },
-      })
-    }
-  })
-
-  return {
-    orderCode,
-    subtotal,
-    shipping,
-    discount,
-    total,
-    settings,
-    emailItems: buildOrderEmailItems(cart),
-  }
 }

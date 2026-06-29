@@ -35,11 +35,6 @@ export async function GET(
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  const bankAccountName = siteSettings.bank_account_name
-  const bankIban = siteSettings.bank_iban
-  const bankName = siteSettings.bank_name
-  const showBankDetails = bankIban && bankAccountName
-
   const rows = order.items.map((item) => `
     <tr>
       <td>${item.name}</td>
@@ -187,17 +182,6 @@ export async function GET(
         </div>
       </div>
     </div>
-
-    ${showBankDetails ? `
-    <div style="margin-top:40px;border:1px solid #e8e4de;padding:20px 24px;">
-      <div style="font-size:9px;font-family:sans-serif;text-transform:uppercase;letter-spacing:0.25em;color:#b08d57;margin-bottom:12px;">Bank Transfer Details</div>
-      <table style="width:100%;border-collapse:collapse;font-family:sans-serif;font-size:12px;">
-        <tr><td style="padding:5px 0;color:#9a9390;width:140px;">Account Name</td><td style="padding:5px 0;color:#2a2422;font-weight:600;">${bankAccountName}</td></tr>
-        <tr><td style="padding:5px 0;color:#9a9390;">IBAN</td><td style="padding:5px 0;color:#2a2422;font-weight:600;font-family:monospace;letter-spacing:0.05em;">${bankIban}</td></tr>
-        ${bankName ? `<tr><td style="padding:5px 0;color:#9a9390;">Bank</td><td style="padding:5px 0;color:#2a2422;">${bankName}</td></tr>` : ''}
-        <tr><td style="padding:5px 0;color:#9a9390;">Reference</td><td style="padding:5px 0;color:#2a2422;font-weight:600;">${order.orderCode}</td></tr>
-      </table>
-    </div>` : ''}
 
     <div class="footer">
       <div class="footer-note">

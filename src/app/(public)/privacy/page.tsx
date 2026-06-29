@@ -37,8 +37,8 @@ export default function PrivacyPolicyPage() {
         {
           title: 'Payments',
           body: [
-            'Payments are handled by third-party payment providers such as PayPal or Stripe where enabled. We do not store full card numbers on our servers.',
-            'Payment providers may process your data according to their own privacy and security policies.',
+            'Visa and Mastercard payments are handled by the approved official card-payment gateway. We do not store full card numbers on our servers.',
+            'The payment gateway may process your data according to its own privacy and security policies.',
           ],
         },
         {

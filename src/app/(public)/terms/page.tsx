@@ -41,7 +41,7 @@ export default function TermsPage() {
           title: 'Pricing, Currency, and Payment',
           body: [
             'Product prices are stored and processed in EUR. Currency selectors may show approximate converted display prices for customer convenience.',
-            'Payment options may include PayPal, card payments, or bank transfer depending on availability. Orders paid by bank transfer are processed after payment is received and confirmed.',
+            'Checkout accepts Visa and Mastercard card payments through the approved official card-payment gateway. Orders are processed after payment is confirmed.',
           ],
         },
         {

@@ -88,15 +88,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-  {
-    title: 'Bank Transfer',
-    description: 'IBAN details shown to customers at checkout and always on the invoice.',
-    fields: [
-      { key: 'bank_account_name', label: 'Account Holder Name', placeholder: 'Prela Atelier' },
-      { key: 'bank_iban', label: 'IBAN', placeholder: 'AL00 0000 0000 0000 0000 0000 0000' },
-      { key: 'bank_name', label: 'Bank Name', placeholder: 'Raiffeisen Bank Albania' },
-    ],
-  },
 ]
 
 type AdminAccount = {
@@ -425,23 +416,6 @@ export default function AdminSettingsPage() {
               <p className="text-xs text-stone-mid font-sans mt-0.5">{section.description}</p>
             </div>
             <div className="p-6 space-y-5">
-              {section.title === 'Bank Transfer' && (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="form-label">Show at Checkout</label>
-                    <p className="text-xs text-stone-pale font-sans mt-0.5">IBAN details are always shown on invoices regardless of this setting.</p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={settings.bank_transfer_enabled === 'true'}
-                    onClick={() => handleSettingChange('bank_transfer_enabled', settings.bank_transfer_enabled === 'true' ? 'false' : 'true')}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.bank_transfer_enabled === 'true' ? 'bg-stone' : 'bg-beige-dark'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.bank_transfer_enabled === 'true' ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-              )}
               {section.fields.map((field) => (
                 <div key={field.key}>
                   <label className="form-label">{field.label}</label>

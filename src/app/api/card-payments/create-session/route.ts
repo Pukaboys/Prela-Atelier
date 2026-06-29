@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { normalizeCartItems } from '@/lib/cart'
 import { getSession } from '@/lib/session'
-import { createPayPalOrder } from '@/lib/paypal'
 import { assertCartInventoryAvailable, InventoryError } from '@/server/services/inventory-service'
 import { calculateOrderAmounts } from '@/server/services/order-service'
 
@@ -17,12 +16,22 @@ const schema = z.object({
   notes: z.string().max(1000).optional().default(''),
 })
 
-export async function POST(req: NextRequest) {
+function hasVisaSandboxConfig() {
+  return Boolean(
+    process.env.VISA_API_BASE_URL &&
+      process.env.VISA_API_USERNAME &&
+      (process.env.VISA_CLIENT_CERT_PEM || process.env.VISA_CLIENT_CERT_PATH) &&
+      (process.env.VISA_CLIENT_KEY_PEM || process.env.VISA_CLIENT_KEY_PATH),
+  )
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json()
+    const body = await request.json()
     const parsed = schema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Invalid form data' }, { status: 400 })
+      const msg = parsed.error.errors[0]?.message ?? 'Invalid form data'
+      return NextResponse.json({ error: msg }, { status: 400 })
     }
 
     const session = await getSession()
@@ -39,19 +48,33 @@ export async function POST(req: NextRequest) {
       appliedPromo: session.appliedPromo,
     })
 
-    // Store form data in session for use during capture
-    session.pendingOrder = parsed.data
-    await session.save()
+    if (!hasVisaSandboxConfig()) {
+      return NextResponse.json(
+        {
+          error:
+            'Visa sandbox is almost ready. Add the Visa certificate, private key, and username in Vercel, then redeploy.',
+          amount: total,
+          currency: 'EUR',
+        },
+        { status: 501 },
+      )
+    }
 
-    const paypalOrderId = await createPayPalOrder(total)
-    return NextResponse.json({ orderId: paypalOrderId })
+    return NextResponse.json(
+      {
+        error:
+          'Visa sandbox credentials are loaded. The checkout connection is waiting for the Click to Pay API endpoint details from Visa.',
+        amount: total,
+        currency: 'EUR',
+      },
+      { status: 501 },
+    )
   } catch (err) {
     if (err instanceof InventoryError) {
       return NextResponse.json({ error: err.message }, { status: 409 })
     }
 
-    const msg = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[paypal/create-order]', msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    console.error('[card-payments/create-session]', err)
+    return NextResponse.json({ error: 'Could not start payment. Please try again.' }, { status: 500 })
   }
 }

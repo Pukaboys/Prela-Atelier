@@ -1,10 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import dynamic from 'next/dynamic'
 import { gtagEvent } from '@/lib/gtag'
 import type { CartItem } from '@/types'
 import {
@@ -14,11 +12,6 @@ import {
   type CurrencyFormatOptions,
 } from '@/lib/helpers'
 import { useLanguage } from '@/components/providers/LanguageProvider'
-
-const PayPalPayment = dynamic(
-  () => import('./PayPalPayment').then((m) => ({ default: m.PayPalPayment })),
-  { ssr: false }
-)
 
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
@@ -39,7 +32,6 @@ const COUNTRIES = [
 interface Props {
   cart: CartItem[]
   subtotal: number
-  bankTransferEnabled: boolean
   currencyOptions?: CurrencyFormatOptions
 }
 
@@ -54,8 +46,7 @@ interface FormState {
   notes: string
 }
 
-export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOptions }: Props) {
-  const router = useRouter()
+export function CheckoutForm({ cart, subtotal, currencyOptions }: Props) {
   const { dictionary } = useLanguage()
 
   const [form, setForm] = useState<FormState>({
@@ -110,7 +101,7 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
     return null
   }
 
-  async function handleBankTransfer() {
+  async function handleStartCardPayment() {
     const validationError = validate()
     if (validationError) {
       setError(validationError)
@@ -119,17 +110,21 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
     setError('')
     setProcessing(true)
     try {
-      const res = await fetch('/api/checkout', {
+      const res = await fetch('/api/card-payments/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const data = await res.json() as { orderCode?: string; error?: string }
+      const data = await res.json() as { redirectUrl?: string; error?: string }
       if (!res.ok) {
         setError(data.error ?? dictionary.checkout.failedToPlaceOrder)
         return
       }
-      window.location.href = `/order-confirmed?order=${data.orderCode}`
+      if (!data.redirectUrl) {
+        setError(dictionary.checkout.failedToPlaceOrder)
+        return
+      }
+      window.location.href = data.redirectUrl
     } catch {
       setError(dictionary.checkout.networkError)
     } finally {
@@ -258,33 +253,13 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
             <div className="mt-10">
               <h2 className="font-serif text-2xl text-stone mb-6">{dictionary.checkout.payment}</h2>
 
-              <PayPalPayment
-                formData={form}
-                validate={validate}
-                onSuccess={(orderCode) => router.push(`/order-confirmed?order=${orderCode}`)}
-                onError={(msg) => setError(msg)}
-              />
-
-              {bankTransferEnabled && (
-                <>
-                  <div className="relative flex items-center gap-4 my-5">
-                    <div className="flex-1 border-t border-beige" />
-                    <span className="text-stone-pale text-xs font-sans uppercase tracking-widest">{dictionary.checkout.or}</span>
-                    <div className="flex-1 border-t border-beige" />
-                  </div>
-
-                  <button
-                    onClick={handleBankTransfer}
-                    disabled={processing}
-                    className="btn-outline w-full disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {processing ? dictionary.checkout.placingOrder : dictionary.checkout.placeOrderBankTransfer}
-                  </button>
-                  <p className="text-xs font-sans text-stone-pale text-center mt-2">
-                    {dictionary.checkout.bankTransferNote}
-                  </p>
-                </>
-              )}
+              <button
+                onClick={handleStartCardPayment}
+                disabled={processing}
+                className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {processing ? dictionary.checkout.preparingPayment : dictionary.checkout.payWithCard}
+              </button>
             </div>
           </div>
 
