@@ -1,11 +1,39 @@
 import { NextResponse } from 'next/server'
+import crypto from 'crypto'
+import fs from 'fs'
 
 export const dynamic = 'force-dynamic'
+
+function preview(value?: string) {
+  if (!value) return null
+  const clean = value.trim()
+  return {
+    length: clean.length,
+    prefix: clean.slice(0, 8),
+    suffix: clean.slice(-4),
+    sha256Prefix: crypto.createHash('sha256').update(clean).digest('hex').slice(0, 12),
+  }
+}
+
+function readEnvSecret(inline?: string, path?: string) {
+  if (inline?.trim()) return inline.replace(/\\n/g, '\n')
+  if (path?.trim()) {
+    try {
+      return fs.readFileSync(path, 'utf8')
+    } catch {
+      return null
+    }
+  }
+  return null
+}
 
 export async function GET() {
   const hasVisaCert = Boolean(process.env.VISA_CLIENT_CERT_PEM || process.env.VISA_CLIENT_CERT_PATH)
   const hasVisaKey = Boolean(process.env.VISA_CLIENT_KEY_PEM || process.env.VISA_CLIENT_KEY_PATH)
   const hasVisaCaBundle = Boolean(process.env.VISA_CA_BUNDLE_PEM || process.env.VISA_CA_BUNDLE_PATH)
+  const visaCert = readEnvSecret(process.env.VISA_CLIENT_CERT_PEM, process.env.VISA_CLIENT_CERT_PATH)
+  const visaClientKey = readEnvSecret(process.env.VISA_CLIENT_KEY_PEM, process.env.VISA_CLIENT_KEY_PATH)
+  const visaCaBundle = readEnvSecret(process.env.VISA_CA_BUNDLE_PEM, process.env.VISA_CA_BUNDLE_PATH)
 
   const checks: Record<string, string> = {
     DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'MISSING',
@@ -41,7 +69,21 @@ export async function GET() {
     hasVisaCert &&
     hasVisaKey
   return NextResponse.json(
-    { status: allRequired ? 'ok' : 'degraded', env: checks, db: dbStatus },
+    {
+      status: allRequired ? 'ok' : 'degraded',
+      env: checks,
+      visaDiagnostics: {
+        apiKey: preview(process.env.VISA_API_KEY),
+        sharedSecret: {
+          ...preview(process.env.VISA_SHARED_SECRET),
+          likelyEncryptedValue: (process.env.VISA_SHARED_SECRET?.trim().length ?? 0) > 200,
+        },
+        clientCert: preview(visaCert ?? undefined),
+        clientKey: preview(visaClientKey ?? undefined),
+        caBundle: preview(visaCaBundle ?? undefined),
+      },
+      db: dbStatus,
+    },
     { status: allRequired ? 200 : 503 }
   )
 }
