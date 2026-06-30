@@ -215,6 +215,73 @@ export async function createConfirmedOrder({
   }
 }
 
+export async function createPendingBankTransferOrder({
+  form,
+  cart,
+  appliedPromo,
+}: {
+  form: OrderFormInput
+  cart: CartItem[]
+  appliedPromo?: AppliedPromo
+}) {
+  const { settings, subtotal, discount, shipping, total } = await calculateOrderAmounts({
+    country: form.country,
+    cart,
+    appliedPromo,
+  })
+  const orderCode = generateOrderCode()
+
+  await prisma.$transaction(async (tx) => {
+    await assertCartInventoryAvailable(cart, tx)
+
+    await tx.order.create({
+      data: {
+        orderCode,
+        customerName: form.name,
+        customerEmail: form.email,
+        customerPhone: form.phone || null,
+        address: form.address,
+        city: form.city,
+        postcode: form.postcode,
+        country: form.country,
+        subtotal,
+        shipping,
+        total,
+        status: 'pending',
+        notes: buildOrderNotes(form.notes || null, 'Design'),
+        promoCode: appliedPromo?.code ?? null,
+        discount,
+        items: {
+          create: cart.map((item) => ({
+            productId: item.productId,
+            name: buildOrderItemName(item),
+            priceEur: item.price,
+            quantity: item.quantity,
+            subtotal: item.price * item.quantity,
+          })),
+        },
+      },
+    })
+
+    if (appliedPromo?.code) {
+      await tx.promoCode.update({
+        where: { code: appliedPromo.code },
+        data: { usedCount: { increment: 1 } },
+      })
+    }
+  })
+
+  return {
+    orderCode,
+    subtotal,
+    shipping,
+    discount,
+    total,
+    settings,
+    emailItems: buildOrderEmailItems(cart),
+  }
+}
+
 export async function listOrdersForAdmin() {
   const orders = await prisma.order.findMany({
     orderBy: { createdAt: 'desc' },

@@ -89,6 +89,8 @@ export interface ClientDictionary {
     placingOrder: string
     preparingPayment: string
     payWithCard: string
+    placeOrderBankTransfer: string
+    bankTransferNote: string
     qtyValue: (qty: number) => string
     sslCheckout: string
     deliveryWindow: string
@@ -289,6 +291,8 @@ const dictionaries: Record<LanguageCode, ClientDictionary> = {
       placingOrder: 'Placing Order...',
       preparingPayment: 'Preparing secure payment...',
       payWithCard: 'Pay with Visa or Mastercard',
+      placeOrderBankTransfer: 'Place Order (Bank Transfer)',
+      bankTransferNote: 'Bank transfer details will be provided in your confirmation email. Your order will be held for 3 business days.',
       qtyValue: (qty) => `Qty: ${qty}`,
       sslCheckout: 'SSL secured checkout',
       deliveryWindow: '5-7 day delivery',
@@ -499,6 +503,8 @@ const dictionaries: Record<LanguageCode, ClientDictionary> = {
       placingOrder: 'Duke vendosur porosine...',
       preparingPayment: 'Duke pergatitur pagesen e sigurt...',
       payWithCard: 'Paguaj me Visa ose Mastercard',
+      placeOrderBankTransfer: 'Vendos Porosine (Transferte Bankare)',
+      bankTransferNote: 'Detajet e transfertes bankare do te dergohen ne emailin tuaj te konfirmimit. Porosia do te mbahet per 3 dite pune.',
       qtyValue: (qty) => `Sasia: ${qty}`,
       sslCheckout: 'Pagese e siguruar me SSL',
       deliveryWindow: 'Dergese 5-7 dite',

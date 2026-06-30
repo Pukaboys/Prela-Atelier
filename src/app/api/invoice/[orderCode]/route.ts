@@ -49,6 +49,10 @@ export async function GET(
   const discount = Number(order.discount)
   const total = Number(order.total)
   const customerNotes = getCustomerOrderNotes(order)
+  const bankAccountName = siteSettings.bank_account_name
+  const bankIban = siteSettings.bank_iban
+  const bankName = siteSettings.bank_name
+  const showBankDetails = order.status === 'pending' && Boolean(bankAccountName || bankIban || bankName)
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -98,6 +102,9 @@ export async function GET(
     .download-btn { background: transparent; border: 1px solid #b08d57; color: #f5f3f0; }
     .print-btn:hover { background: #9a7a48; }
     .download-btn:hover { background: #b08d57; }
+    .bank-details { margin-top: 34px; border: 1px solid #e8e4de; padding: 18px; font-family: sans-serif; }
+    .bank-details h2 { font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: #b08d57; margin-bottom: 12px; font-weight: 400; }
+    .bank-details p { font-size: 12px; line-height: 1.7; color: #5a5350; }
   </style>
 </head>
 <body>
@@ -182,6 +189,16 @@ export async function GET(
         </div>
       </div>
     </div>
+
+    ${showBankDetails ? `
+    <div class="bank-details">
+      <h2>Bank Transfer Details</h2>
+      ${bankAccountName ? `<p><strong>Account name:</strong> ${bankAccountName}</p>` : ''}
+      ${bankName ? `<p><strong>Bank:</strong> ${bankName}</p>` : ''}
+      ${bankIban ? `<p><strong>IBAN:</strong> ${bankIban}</p>` : ''}
+      <p><strong>Reference:</strong> ${order.orderCode}</p>
+    </div>
+    ` : ''}
 
     <div class="footer">
       <div class="footer-note">

@@ -32,6 +32,7 @@ const COUNTRIES = [
 interface Props {
   cart: CartItem[]
   subtotal: number
+  bankTransferEnabled: boolean
   currencyOptions?: CurrencyFormatOptions
 }
 
@@ -46,7 +47,7 @@ interface FormState {
   notes: string
 }
 
-export function CheckoutForm({ cart, subtotal, currencyOptions }: Props) {
+export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOptions }: Props) {
   const { dictionary } = useLanguage()
 
   const [form, setForm] = useState<FormState>({
@@ -131,6 +132,34 @@ export function CheckoutForm({ cart, subtotal, currencyOptions }: Props) {
         return
       }
       window.location.href = data.redirectUrl
+    } catch {
+      setError(dictionary.checkout.networkError)
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  async function handleBankTransfer() {
+    const validationError = validate()
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    setError('')
+    setPaymentNotice('')
+    setProcessing(true)
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json() as { orderCode?: string; error?: string }
+      if (!res.ok || !data.orderCode) {
+        setError(data.error ?? dictionary.checkout.failedToPlaceOrder)
+        return
+      }
+      window.location.href = `/order-confirmed?order=${data.orderCode}`
     } catch {
       setError(dictionary.checkout.networkError)
     } finally {
@@ -271,6 +300,28 @@ export function CheckoutForm({ cart, subtotal, currencyOptions }: Props) {
               >
                 {processing ? dictionary.checkout.preparingPayment : dictionary.checkout.payWithCard}
               </button>
+
+              {bankTransferEnabled && (
+                <>
+                  <div className="flex items-center gap-4 my-6">
+                    <div className="h-px bg-beige flex-1" />
+                    <span className="font-sans text-xs uppercase tracking-[0.2em] text-stone-pale">
+                      {dictionary.checkout.or}
+                    </span>
+                    <div className="h-px bg-beige flex-1" />
+                  </div>
+                  <button
+                    onClick={handleBankTransfer}
+                    disabled={processing}
+                    className="btn-outline w-full disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {processing ? dictionary.checkout.placingOrder : dictionary.checkout.placeOrderBankTransfer}
+                  </button>
+                  <p className="mt-3 text-center font-sans text-xs text-stone-pale">
+                    {dictionary.checkout.bankTransferNote}
+                  </p>
+                </>
+              )}
             </div>
           </div>
 

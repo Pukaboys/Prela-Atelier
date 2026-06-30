@@ -41,7 +41,7 @@ export default function TermsPage() {
           title: 'Pricing, Currency, and Payment',
           body: [
             'Product prices are stored and processed in EUR. Currency selectors may show approximate converted display prices for customer convenience.',
-            'Checkout accepts Visa and Mastercard card payments through the approved official card-payment gateway. Orders are processed after payment is confirmed.',
+            'Checkout may accept Visa and Mastercard card payments through the approved official card-payment gateway, and bank transfer where enabled. Orders are processed after payment is confirmed.',
           ],
         },
         {

@@ -88,6 +88,15 @@ const SECTIONS: Section[] = [
       },
     ],
   },
+  {
+    title: 'Bank Transfer',
+    description: 'Bank details used for manual checkout emails and invoices.',
+    fields: [
+      { key: 'bank_account_name', label: 'Account Name', placeholder: 'Prela Atelier' },
+      { key: 'bank_iban', label: 'IBAN', placeholder: 'AL00 0000 0000 0000 0000 0000 0000' },
+      { key: 'bank_name', label: 'Bank Name', placeholder: 'Your bank name' },
+    ],
+  },
 ]
 
 type AdminAccount = {
@@ -416,6 +425,20 @@ export default function AdminSettingsPage() {
               <p className="text-xs text-stone-mid font-sans mt-0.5">{section.description}</p>
             </div>
             <div className="p-6 space-y-5">
+              {section.title === 'Bank Transfer' && (
+                <label className="flex items-center justify-between gap-4 border border-beige bg-cream/40 px-4 py-3">
+                  <span>
+                    <span className="block font-sans text-sm font-medium text-stone">Enable bank transfer checkout</span>
+                    <span className="block font-sans text-xs text-stone-pale mt-1">Shows the manual bank-transfer button at checkout.</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-gold"
+                    checked={settings.bank_transfer_enabled !== 'false'}
+                    onChange={(e) => handleSettingChange('bank_transfer_enabled', e.target.checked ? 'true' : 'false')}
+                  />
+                </label>
+              )}
               {section.fields.map((field) => (
                 <div key={field.key}>
                   <label className="form-label">{field.label}</label>

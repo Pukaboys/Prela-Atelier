@@ -135,6 +135,55 @@ export async function sendOrderConfirmation(opts: {
   await send(opts.to, `Order confirmed — ${opts.orderCode}`, layout(body))
 }
 
+export async function sendBankTransferInstructions(opts: {
+  to: string
+  customerName: string
+  orderCode: string
+  items: OrderItem[]
+  shipping: number
+  total: number
+  bankAccountName: string
+  bankIban: string
+  bankName?: string
+} & MoneyDisplayOptions) {
+  const firstName = opts.customerName.split(' ')[0]
+  const rows = opts.items
+    .map(
+      (i) => `<tr><td>${i.name} x ${i.quantity}</td><td class="right">${money(i.subtotal, opts.currencyOptions)}</td></tr>`
+    )
+    .join('')
+
+  const body = `
+    <p class="eyebrow">Order Received</p>
+    <h1 class="title">Thank you, ${firstName}. Your order is being held.</h1>
+    <p>Please complete your bank transfer within 3 business days. We will confirm and prepare your order once payment is received.</p>
+    <hr class="divider">
+    <p class="eyebrow">Order Reference</p>
+    <p><span class="badge">${opts.orderCode}</span></p>
+    <hr class="divider">
+    <p class="eyebrow">Bank Transfer Details</p>
+    <p><strong>Account name:</strong> ${opts.bankAccountName || 'Prela Atelier'}</p>
+    ${opts.bankName ? `<p><strong>Bank:</strong> ${opts.bankName}</p>` : ''}
+    <p><strong>IBAN:</strong> ${opts.bankIban || 'To be provided by Prela Atelier'}</p>
+    <p><strong>Reference:</strong> ${opts.orderCode}</p>
+    <hr class="divider">
+    <p class="eyebrow">Order Summary</p>
+    <table class="table">
+      <tbody>
+        ${rows}
+        <tr><td style="padding-top:12px;border-top:1px solid #e8e4de;">Shipping</td><td class="right" style="padding-top:12px;border-top:1px solid #e8e4de;">${opts.shipping === 0 ? 'Free' : money(opts.shipping, opts.currencyOptions)}</td></tr>
+        <tr class="total"><td><strong>Total</strong></td><td class="right"><strong>${money(opts.total, opts.currencyOptions)}</strong></td></tr>
+      </tbody>
+    </table>
+    <hr class="divider">
+    <a href="${appUrl()}/track-order?order=${opts.orderCode}" class="btn">Track Your Order</a>
+    &nbsp;&nbsp;
+    <a href="${invoiceUrl(opts.orderCode, opts.currencyOptions)}" class="btn" style="background:#5a5350;">View Invoice</a>
+  `
+
+  await send(opts.to, `Order received - ${opts.orderCode}`, layout(body))
+}
+
 // ── New order alert (to admin) ────────────────────────────────────────────────
 export async function sendNewOrderAlert(opts: {
   customerName: string

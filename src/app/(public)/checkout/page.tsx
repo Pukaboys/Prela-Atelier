@@ -16,11 +16,13 @@ export default async function CheckoutPage() {
   if (cart.length === 0) redirect('/cart')
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const bankTransferEnabled = settings.bank_transfer_enabled === 'true'
 
   return (
     <CheckoutForm
       cart={cart}
       subtotal={subtotal}
+      bankTransferEnabled={bankTransferEnabled}
       currencyOptions={currencyOptions}
     />
   )

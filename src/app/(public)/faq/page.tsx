@@ -33,7 +33,7 @@ const FAQS = [
       },
       {
         question: 'Which payment methods are available?',
-        answer: 'Checkout is prepared for Visa and Mastercard card payments through the approved official card-payment gateway. Prela Atelier does not store full card numbers on its servers.',
+        answer: 'Checkout supports Visa and Mastercard card payments through the approved official card-payment gateway where available, plus bank transfer as a manual fallback. Prela Atelier does not store full card numbers on its servers.',
       },
       {
         question: 'Can I download an invoice?',
