@@ -77,9 +77,10 @@ export async function visaRequest<TResponse>({
   const requestBody = body ? JSON.stringify(body) : ''
   const queryString = `apikey=${encodeURIComponent(apiKey)}`
   const cleanResourcePath = resourcePath.replace(/^\//, '')
+  const signedResourcePath = `/${cleanResourcePath}`
   const requestUrl = new URL(`/${cleanResourcePath}?${queryString}`, baseUrl)
   const xPayToken = buildXPayToken({
-    resourcePath: cleanResourcePath,
+    resourcePath: signedResourcePath,
     queryString,
     requestBody,
   })
