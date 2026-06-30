@@ -2,12 +2,12 @@ import type { NextConfig } from 'next'
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' *.googletagmanager.com *.paypal.com",
+  "script-src 'self' 'unsafe-inline' *.googletagmanager.com https://vercel.live",
   "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
   "font-src 'self' fonts.gstatic.com",
-  "img-src 'self' data: blob: *.public.blob.vercel-storage.com *.google-analytics.com *.googletagmanager.com *.paypal.com",
-  "connect-src 'self' *.google-analytics.com *.analytics.google.com *.googletagmanager.com *.paypal.com",
-  "frame-src *.paypal.com",
+  "img-src 'self' data: blob: *.public.blob.vercel-storage.com *.google-analytics.com *.googletagmanager.com https://vercel.live",
+  "connect-src 'self' *.google-analytics.com *.analytics.google.com *.googletagmanager.com https://vercel.live",
+  "frame-src 'self' https://vercel.live",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
