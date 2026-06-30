@@ -41,6 +41,7 @@ export async function GET() {
     VISA_API_BASE_URL: process.env.VISA_API_BASE_URL ? 'set' : 'MISSING',
     VISA_API_USERNAME: process.env.VISA_API_USERNAME ? 'set' : 'MISSING',
     VISA_API_KEY: process.env.VISA_API_KEY ? 'set' : 'MISSING',
+    VISA_SRC_CLIENT_ID: process.env.VISA_SRC_CLIENT_ID ? 'set' : '(using VISA_API_KEY)',
     VISA_SHARED_SECRET: process.env.VISA_SHARED_SECRET ? 'set' : 'MISSING',
     VISA_CLIENT_CERT: hasVisaCert ? 'set' : 'MISSING',
     VISA_CLIENT_KEY: hasVisaKey ? 'set' : 'MISSING',
@@ -74,6 +75,7 @@ export async function GET() {
       env: checks,
       visaDiagnostics: {
         apiKey: preview(process.env.VISA_API_KEY),
+        srcClientId: preview(process.env.VISA_SRC_CLIENT_ID || process.env.VISA_API_KEY),
         sharedSecret: {
           ...preview(process.env.VISA_SHARED_SECRET),
           likelyEncryptedValue: (process.env.VISA_SHARED_SECRET?.trim().length ?? 0) > 200,

@@ -53,6 +53,17 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = process.env.VISA_API_KEY!
+    const srcClientId = process.env.VISA_SRC_CLIENT_ID || apiKey
+    const phoneDigits = parsed.data.phone.replace(/\D/g, '')
+    const consumerIdentity = phoneDigits.length >= 4
+      ? {
+          identityType: 'MOBILE_PHONE_NUMBER',
+          identityValue: phoneDigits,
+        }
+      : {
+          identityType: 'EMAIL_ADDRESS',
+          identityValue: parsed.data.email,
+        }
     const identityLookup = await visaRequest<{
       consumerPresent1?: boolean
       consumerStatus?: string
@@ -68,11 +79,8 @@ export async function POST(request: NextRequest) {
     }>({
       resourcePath: '/src/v1/identities/lookup',
       body: {
-        srcClientId: apiKey,
-        consumerIdentity: {
-          identityType: 'EMAIL_ADDRESS',
-          identityValue: parsed.data.email,
-        },
+        srcClientId,
+        consumerIdentity,
       },
     })
 
