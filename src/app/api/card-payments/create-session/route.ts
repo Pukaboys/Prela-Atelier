@@ -6,6 +6,20 @@ import { hasVisaClickToPayConfig, visaRequest } from '@/lib/visa'
 import { assertCartInventoryAvailable, InventoryError } from '@/server/services/inventory-service'
 import { calculateOrderAmounts } from '@/server/services/order-service'
 
+type VisaIdentityLookupResponse = {
+  consumerPresent1?: boolean
+  consumerStatus?: string
+  reason?: string
+  message?: string
+  status?: string
+  errorDetail?: Array<{
+    reason?: string
+    message?: string
+    source?: string
+    sourceType?: string
+  }>
+}
+
 const schema = z.object({
   name: z.string().min(1).max(255),
   email: z.string().email().max(255),
@@ -16,6 +30,10 @@ const schema = z.object({
   country: z.string().min(1).max(100).default('France'),
   notes: z.string().max(1000).optional().default(''),
 })
+
+function isNoMatchingScenario(response: VisaIdentityLookupResponse) {
+  return response.errorDetail?.some((detail) => detail.reason === 'NO_MATCHING_SCENARIO') ?? false
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,25 +82,32 @@ export async function POST(request: NextRequest) {
           identityType: 'EMAIL_ADDRESS',
           identityValue: parsed.data.email,
         }
-    const identityLookup = await visaRequest<{
-      consumerPresent1?: boolean
-      consumerStatus?: string
-      reason?: string
-      message?: string
-      status?: string
-      errorDetail?: Array<{
-        reason?: string
-        message?: string
-        source?: string
-        sourceType?: string
-      }>
-    }>({
+    let usedSimulatorFallback = false
+    let identityLookup = await visaRequest<VisaIdentityLookupResponse>({
       resourcePath: '/src/v1/identities/lookup',
       body: {
         srcClientId,
         consumerIdentity,
       },
     })
+
+    if (
+      identityLookup.status === 400 &&
+      isNoMatchingScenario(identityLookup.body) &&
+      process.env.VISA_API_BASE_URL?.includes('sandbox')
+    ) {
+      usedSimulatorFallback = true
+      identityLookup = await visaRequest<VisaIdentityLookupResponse>({
+        resourcePath: '/src/v1/identities/lookup',
+        body: {
+          srcClientId: process.env.VISA_SRC_CLIENT_ID || 'f48ac10b-58cc-4372-a567-0e02b2c3d489',
+          consumerIdentity: {
+            identityType: 'EMAIL_ADDRESS',
+            identityValue: 'user@example.com',
+          },
+        },
+      })
+    }
 
     if (identityLookup.status < 200 || identityLookup.status >= 300) {
       const detail = identityLookup.body?.errorDetail?.[0]
@@ -116,12 +141,15 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: identityLookup.body.consumerPresent1
-        ? 'Visa sandbox connection works. This customer appears to have a Click to Pay profile.'
-        : 'Visa sandbox connection works. This customer does not appear to have a Click to Pay profile yet.',
+      message: usedSimulatorFallback
+        ? 'Visa sandbox connection works using the official simulator identity scenario.'
+        : identityLookup.body.consumerPresent1
+          ? 'Visa sandbox connection works. This customer appears to have a Click to Pay profile.'
+          : 'Visa sandbox connection works. This customer does not appear to have a Click to Pay profile yet.',
       visaStatus: identityLookup.status,
       consumerPresent: Boolean(identityLookup.body.consumerPresent1),
       consumerStatus: identityLookup.body.consumerStatus ?? null,
+      simulatorFallback: usedSimulatorFallback,
       amount: total,
       currency: 'EUR',
     })
