@@ -84,12 +84,17 @@ export async function POST(request: NextRequest) {
         detail?.source,
         detail?.message,
       ].filter(Boolean).join(' - ')
+      const authHint =
+        identityLookup.status === 401 && !detailText
+          ? 'Visa returned 401 without details. Verify that VISA_SHARED_SECRET is the decrypted X-Pay shared secret, not the encrypted value copied from Visa, and that VISA_API_KEY and VISA_SHARED_SECRET belong to the same active X-Pay credential.'
+          : ''
 
       return NextResponse.json(
         {
           error: [
             identityLookup.body?.message ?? 'Visa sandbox rejected the Click to Pay identity lookup.',
             detailText,
+            authHint,
           ].filter(Boolean).join(' '),
           visaStatus: identityLookup.status,
           visaReason: identityLookup.body?.reason,
