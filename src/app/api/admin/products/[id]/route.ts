@@ -10,6 +10,52 @@ import {
   deleteProductVariationConfig,
 } from '@/server/services/product-variation-service'
 
+async function ensureProductDeleteKeepsOrderHistory() {
+  await prisma.$executeRawUnsafe(`
+    DO $$
+    DECLARE
+      existing_constraint text;
+    BEGIN
+      SELECT tc.constraint_name
+      INTO existing_constraint
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+      JOIN information_schema.constraint_column_usage ccu
+        ON ccu.constraint_name = tc.constraint_name
+        AND ccu.table_schema = tc.table_schema
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_schema = current_schema()
+        AND tc.table_name = 'order_items'
+        AND kcu.column_name = 'product_id'
+        AND ccu.table_name = 'products'
+        AND ccu.column_name = 'id'
+      LIMIT 1;
+
+      IF existing_constraint IS NOT NULL THEN
+        EXECUTE format('ALTER TABLE order_items DROP CONSTRAINT %I', existing_constraint);
+      END IF;
+
+      ALTER TABLE order_items ALTER COLUMN product_id DROP NOT NULL;
+
+      IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_schema = current_schema()
+          AND table_name = 'order_items'
+          AND constraint_name = 'order_items_product_id_fkey'
+      ) THEN
+        ALTER TABLE order_items
+          ADD CONSTRAINT order_items_product_id_fkey
+          FOREIGN KEY (product_id)
+          REFERENCES products(id)
+          ON DELETE SET NULL;
+      END IF;
+    END $$;
+  `)
+}
+
 const UpdateSchema = z.object({
   name: z.string().min(1).optional(),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/).optional(),
@@ -103,16 +149,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (isNaN(numId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   try {
-    const orderItemCount = await prisma.orderItem.count({ where: { productId: numId } })
-
-    if (orderItemCount > 0) {
-      return NextResponse.json(
-        {
-          error: `This product is used in ${orderItemCount} order item${orderItemCount === 1 ? '' : 's'} and cannot be permanently deleted. Set its stock to 0 if you want to stop selling it while keeping order history safe.`,
-        },
-        { status: 409 },
-      )
-    }
+    await ensureProductDeleteKeepsOrderHistory()
 
     await prisma.$transaction(async (tx) => {
       await deleteProductVariationConfig(numId, tx)

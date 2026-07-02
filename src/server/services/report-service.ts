@@ -49,7 +49,7 @@ type OrderForReports = {
         name: string
         origin: string
       } | null
-    }
+    } | null
   }>
 }
 
@@ -549,8 +549,8 @@ async function buildMaterialUsageReport(filters: ReportFilters): Promise<ReportD
     if (order.status === 'cancelled') continue
 
     for (const item of order.items) {
-      const material = item.product.material?.name ?? 'Unassigned'
-      const origin = item.product.material?.origin ?? ''
+      const material = item.product?.material?.name ?? 'Unassigned'
+      const origin = item.product?.material?.origin ?? ''
       const key = `${material}::${origin}`
       const existing = usage.get(key) ?? {
         material,

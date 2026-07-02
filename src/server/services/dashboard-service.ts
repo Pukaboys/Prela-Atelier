@@ -141,7 +141,7 @@ function buildOrderStatusBreakdown(orders: DashboardOrder[]) {
 
 function buildTopProducts(
   items: Array<{
-    productId: number
+    productId: number | null
     name: string
     quantity: number
     subtotal: number | string | { toNumber(): number }
@@ -149,12 +149,13 @@ function buildTopProducts(
   }>,
   limit = 5,
 ) {
-  const map = new Map<number, RankingItem>()
+  const map = new Map<string, RankingItem>()
 
   for (const item of items) {
     if (item.order.status === 'cancelled') continue
 
-    const existing = map.get(item.productId) ?? {
+    const mapKey = item.productId != null ? String(item.productId) : `deleted:${item.name}`
+    const existing = map.get(mapKey) ?? {
       label: item.name,
       quantity: 0,
       revenue: 0,
@@ -162,7 +163,7 @@ function buildTopProducts(
 
     existing.quantity += item.quantity
     existing.revenue = Math.round((existing.revenue + toNumber(item.subtotal)) * 100) / 100
-    map.set(item.productId, existing)
+    map.set(mapKey, existing)
   }
 
   return Array.from(map.values())
@@ -175,7 +176,7 @@ function buildTopMaterials(
     quantity: number
     subtotal: number | string | { toNumber(): number }
     order: { status: string }
-    product: { material: { id: number; name: string } | null }
+    product: { material: { id: number; name: string } | null } | null
   }>,
   limit = 5,
 ) {
@@ -184,7 +185,7 @@ function buildTopMaterials(
   for (const item of items) {
     if (item.order.status === 'cancelled') continue
 
-    const label = item.product.material?.name ?? 'Unassigned'
+    const label = item.product?.material?.name ?? 'Unassigned'
     const existing = map.get(label) ?? {
       label,
       quantity: 0,

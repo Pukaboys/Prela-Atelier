@@ -14,7 +14,7 @@ type IntelligenceOrder = {
   status: string
   createdAt: Date
   items: Array<{
-    productId: number
+    productId: number | null
     name: string
     quantity: number
     subtotal: DecimalLike
@@ -213,6 +213,8 @@ function aggregateProductSales(orders: IntelligenceOrder[]) {
     if (order.status === 'cancelled') continue
 
     for (const item of order.items) {
+      if (item.productId == null) continue
+
       const existing = map.get(item.productId) ?? {
         id: item.productId,
         label: item.name,

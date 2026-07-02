@@ -234,8 +234,17 @@ export async function applyInventoryForConfirmedOrder(
     }
   }
 
+  const inventoryItems = order.items.filter((item): item is typeof item & { productId: number } => item.productId != null)
+
+  if (inventoryItems.length === 0) {
+    return {
+      applied: false,
+      appliedAt: null,
+    }
+  }
+
   await assertCartInventoryAvailable(
-    order.items.map((item) => ({
+    inventoryItems.map((item) => ({
       productId: item.productId,
       quantity: item.quantity,
       name: item.name,
@@ -246,7 +255,7 @@ export async function applyInventoryForConfirmedOrder(
   const products = await client.product.findMany({
     where: {
       id: {
-        in: [...new Set(order.items.map((item) => item.productId))],
+        in: [...new Set(inventoryItems.map((item) => item.productId))],
       },
     },
     select: {
@@ -259,7 +268,7 @@ export async function applyInventoryForConfirmedOrder(
   const productMap = new Map(products.map((product) => [product.id, { ...product }]))
   const logEntries: InventoryLogEntry[] = []
 
-  for (const item of order.items) {
+  for (const item of inventoryItems) {
     const product = productMap.get(item.productId)
 
     if (!product) {
