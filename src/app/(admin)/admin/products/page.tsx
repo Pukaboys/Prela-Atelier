@@ -79,6 +79,7 @@ export default function AdminProductsPage() {
   const [uploading, setUploading] = useState(false)
   const [variationUploading, setVariationUploading] = useState(false)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [deleteError, setDeleteError] = useState('')
   const [search, setSearch] = useState('')
   const [currencyOptions, setCurrencyOptions] = useState<CurrencyFormatOptions>()
   const [materialVariations, setMaterialVariations] = useState<ProductVariationFormValue[]>([])
@@ -312,11 +313,17 @@ export default function AdminProductsPage() {
   }
 
   async function handleDelete(id: number) {
+    setDeleteError('')
     const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({} as { error?: string }))
+
     if (res.ok) {
       setDeleteId(null)
       load()
+      return
     }
+
+    setDeleteError(typeof data.error === 'string' ? data.error : 'Unable to delete product.')
   }
 
   const selectedMat = form.materialId ? materials.find(m => m.id === parseInt(form.materialId)) : null
@@ -435,7 +442,15 @@ export default function AdminProductsPage() {
                     <td>
                       <div className="flex items-center gap-3">
                         <button onClick={() => openEdit(p)} className="text-xs text-gold hover:text-gold-dark font-sans uppercase tracking-wider">Edit</button>
-                        <button onClick={() => setDeleteId(p.id)} className="text-xs text-red-500 hover:text-red-700 font-sans uppercase tracking-wider">Delete</button>
+                        <button
+                          onClick={() => {
+                            setDeleteError('')
+                            setDeleteId(p.id)
+                          }}
+                          className="text-xs text-red-500 hover:text-red-700 font-sans uppercase tracking-wider"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -578,9 +593,18 @@ export default function AdminProductsPage() {
           <div className="bg-white border border-beige p-8 max-w-sm w-full shadow-xl text-center">
             <p className="font-serif text-xl text-stone mb-3">Delete this product?</p>
             <p className="font-sans text-sm text-stone-mid mb-6">This action cannot be undone.</p>
+            {deleteError && <div className="flash-error mb-6 text-left">{deleteError}</div>}
             <div className="flex gap-3 justify-center">
               <button onClick={() => handleDelete(deleteId)} className="bg-red-600 text-white text-sm font-sans uppercase tracking-widest px-5 py-2 hover:bg-red-700">Delete</button>
-              <button onClick={() => setDeleteId(null)} className="btn-ghost text-sm">Cancel</button>
+              <button
+                onClick={() => {
+                  setDeleteError('')
+                  setDeleteId(null)
+                }}
+                className="btn-ghost text-sm"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

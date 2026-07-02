@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import prisma from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
@@ -102,12 +103,28 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (isNaN(numId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   try {
+    const orderItemCount = await prisma.orderItem.count({ where: { productId: numId } })
+
+    if (orderItemCount > 0) {
+      return NextResponse.json(
+        {
+          error: `This product is used in ${orderItemCount} order item${orderItemCount === 1 ? '' : 's'} and cannot be permanently deleted. Set its stock to 0 if you want to stop selling it while keeping order history safe.`,
+        },
+        { status: 409 },
+      )
+    }
+
     await prisma.$transaction(async (tx) => {
       await deleteProductVariationConfig(numId, tx)
       await tx.product.delete({ where: { id: numId } })
     })
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+      return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
+    }
+
+    console.error('[admin/products DELETE]', err)
+    return NextResponse.json({ error: 'Unable to delete product.' }, { status: 500 })
   }
 }
