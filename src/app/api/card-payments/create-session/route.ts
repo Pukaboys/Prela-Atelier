@@ -20,6 +20,8 @@ type VisaIdentityLookupResponse = {
   }>
 }
 
+const VISA_SIMULATOR_SRC_CLIENT_ID = 'f48ac10b-58cc-4372-a567-0e02b2c3d489'
+
 const schema = z.object({
   name: z.string().min(1).max(255),
   email: z.string().email().max(255),
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
       identityLookup = await visaRequest<VisaIdentityLookupResponse>({
         resourcePath: '/src/v1/identities/lookup',
         body: {
-          srcClientId: process.env.VISA_SRC_CLIENT_ID || 'f48ac10b-58cc-4372-a567-0e02b2c3d489',
+          srcClientId: VISA_SIMULATOR_SRC_CLIENT_ID,
           consumerIdentity: {
             identityType: 'EMAIL_ADDRESS',
             identityValue: 'user@example.com',
@@ -133,6 +135,7 @@ export async function POST(request: NextRequest) {
           visaReason: identityLookup.body?.reason,
           visaMessage: identityLookup.body?.message,
           visaErrorDetail: identityLookup.body?.errorDetail ?? [],
+          simulatorFallback: usedSimulatorFallback,
           amount: total,
           currency: 'EUR',
         },
