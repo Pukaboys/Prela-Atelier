@@ -43,27 +43,74 @@ type PokToken = {
 
 let cachedToken: PokToken | null = null
 
+export class PokPayConfigError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'PokPayConfigError'
+  }
+}
+
+export class PokPayApiError extends Error {
+  status?: number
+  details?: unknown
+
+  constructor(message: string, options: { status?: number; details?: unknown } = {}) {
+    super(message)
+    this.name = 'PokPayApiError'
+    this.status = options.status
+    this.details = options.details
+  }
+}
+
+function env(name: string, fallbackName?: string) {
+  return process.env[name]?.trim() || (fallbackName ? process.env[fallbackName]?.trim() : undefined)
+}
+
 function getPokBaseUrl() {
-  return process.env.POKPAY_API_BASE ?? 'https://api.pokpay.io'
+  return env('POKPAY_API_BASE', 'POK_API_BASE') ?? 'https://api.pokpay.io'
 }
 
 function getPokConfig() {
-  const keyId = process.env.POKPAY_KEY_ID
-  const keySecret = process.env.POKPAY_KEY_SECRET
-  const merchantId = process.env.POKPAY_MERCHANT_ID
+  const keyId = env('POKPAY_KEY_ID', 'POK_KEY_ID')
+  const keySecret = env('POKPAY_KEY_SECRET', 'POK_KEY_SECRET')
+  const merchantId = env('POKPAY_MERCHANT_ID', 'POK_MERCHANT_ID')
 
   if (!keyId || !keySecret || !merchantId) {
-    throw new Error('POK Pay is not configured')
+    throw new PokPayConfigError(
+      'POK Pay is not configured. Set POKPAY_KEY_ID, POKPAY_KEY_SECRET, and POKPAY_MERCHANT_ID in Vercel.',
+    )
   }
 
   return { keyId, keySecret, merchantId }
 }
 
-function assertPokSuccess(response: { statusCode: number; message?: string; errors?: Array<{ message?: string }> }) {
+function assertPokSuccess(
+  response: { statusCode: number; message?: string; errors?: Array<{ message?: string }> },
+  httpStatus?: number,
+) {
   if (response.statusCode >= 200 && response.statusCode < 300) return
 
   const errorMessage = response.errors?.find((error) => error.message)?.message
-  throw new Error(errorMessage ?? response.message ?? 'POK Pay request failed')
+  throw new PokPayApiError(errorMessage ?? response.message ?? 'POK Pay request failed', {
+    status: httpStatus ?? response.statusCode,
+    details: response,
+  })
+}
+
+async function readPokResponse<T>(res: Response): Promise<T & { statusCode: number; message?: string; errors?: Array<{ message?: string }> }> {
+  const text = await res.text()
+  if (!text) {
+    throw new PokPayApiError('POK Pay returned an empty response', { status: res.status })
+  }
+
+  try {
+    return JSON.parse(text) as T & { statusCode: number; message?: string; errors?: Array<{ message?: string }> }
+  } catch {
+    throw new PokPayApiError('POK Pay returned an invalid response', {
+      status: res.status,
+      details: text.slice(0, 500),
+    })
+  }
 }
 
 async function getPokAccessToken() {
@@ -77,8 +124,8 @@ async function getPokAccessToken() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ keyId, keySecret }),
   })
-  const data = (await res.json()) as PokLoginResponse
-  assertPokSuccess(data)
+  const data = await readPokResponse<PokLoginResponse>(res)
+  assertPokSuccess(data, res.status)
 
   const accessToken = data.data?.accessToken
   if (!accessToken) {
@@ -104,8 +151,8 @@ async function pokRequest<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
 
-  const data = (await res.json()) as T & { statusCode: number; message?: string; errors?: Array<{ message?: string }> }
-  assertPokSuccess(data)
+  const data = await readPokResponse<T>(res)
+  assertPokSuccess(data, res.status)
   return data
 }
 
@@ -133,7 +180,7 @@ export async function createPokOrder(input: CreatePokOrderInput) {
       currencyCode: input.currencyCode,
       autoCapture: true,
       shippingCost: input.shippingCost,
-      webhookUrl: process.env.POKPAY_WEBHOOK_URL || undefined,
+      webhookUrl: env('POKPAY_WEBHOOK_URL', 'POK_WEBHOOK_URL') || undefined,
       redirectUrl: input.redirectUrl,
       failRedirectUrl: input.failRedirectUrl,
       description: input.description,

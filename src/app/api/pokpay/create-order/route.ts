@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { buildOrderItemName, normalizeCartItems } from '@/lib/cart'
 import { getSession } from '@/lib/session'
-import { createPokOrder } from '@/lib/pokpay'
+import { createPokOrder, PokPayApiError, PokPayConfigError } from '@/lib/pokpay'
 import { assertCartInventoryAvailable, InventoryError } from '@/server/services/inventory-service'
 import { calculateOrderAmounts } from '@/server/services/order-service'
 import { checkoutSchema } from '@/server/validations/order'
@@ -99,6 +99,23 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (err instanceof InventoryError) {
       return NextResponse.json({ error: err.message }, { status: 409 })
+    }
+
+    if (err instanceof PokPayConfigError) {
+      console.error('[pokpay/create-order] configuration error:', err.message)
+      return NextResponse.json({ error: err.message }, { status: 503 })
+    }
+
+    if (err instanceof PokPayApiError) {
+      console.error('[pokpay/create-order] POK API error:', {
+        message: err.message,
+        status: err.status,
+        details: err.details,
+      })
+      return NextResponse.json(
+        { error: `POK payment could not be started: ${err.message}` },
+        { status: 502 },
+      )
     }
 
     console.error('[pokpay/create-order]', err)
