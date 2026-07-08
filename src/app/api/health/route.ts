@@ -1,51 +1,15 @@
 import { NextResponse } from 'next/server'
-import crypto from 'crypto'
-import fs from 'fs'
 
 export const dynamic = 'force-dynamic'
 
-function preview(value?: string) {
-  if (!value) return null
-  const clean = value.trim()
-  return {
-    length: clean.length,
-    prefix: clean.slice(0, 8),
-    suffix: clean.slice(-4),
-    sha256Prefix: crypto.createHash('sha256').update(clean).digest('hex').slice(0, 12),
-  }
-}
-
-function readEnvSecret(inline?: string, path?: string) {
-  if (inline?.trim()) return inline.replace(/\\n/g, '\n')
-  if (path?.trim()) {
-    try {
-      return fs.readFileSync(path, 'utf8')
-    } catch {
-      return null
-    }
-  }
-  return null
-}
-
 export async function GET() {
-  const hasVisaCert = Boolean(process.env.VISA_CLIENT_CERT_PEM || process.env.VISA_CLIENT_CERT_PATH)
-  const hasVisaKey = Boolean(process.env.VISA_CLIENT_KEY_PEM || process.env.VISA_CLIENT_KEY_PATH)
-  const hasVisaCaBundle = Boolean(process.env.VISA_CA_BUNDLE_PEM || process.env.VISA_CA_BUNDLE_PATH)
-  const visaCert = readEnvSecret(process.env.VISA_CLIENT_CERT_PEM, process.env.VISA_CLIENT_CERT_PATH)
-  const visaClientKey = readEnvSecret(process.env.VISA_CLIENT_KEY_PEM, process.env.VISA_CLIENT_KEY_PATH)
-  const visaCaBundle = readEnvSecret(process.env.VISA_CA_BUNDLE_PEM, process.env.VISA_CA_BUNDLE_PATH)
-
   const checks: Record<string, string> = {
     DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'MISSING',
     SESSION_SECRET: process.env.SESSION_SECRET ? 'set' : 'MISSING (using fallback)',
-    VISA_API_BASE_URL: process.env.VISA_API_BASE_URL ? 'set' : 'MISSING',
-    VISA_API_USERNAME: process.env.VISA_API_USERNAME ? 'set' : 'MISSING',
-    VISA_API_KEY: process.env.VISA_API_KEY ? 'set' : 'MISSING',
-    VISA_SRC_CLIENT_ID: process.env.VISA_SRC_CLIENT_ID ? 'set' : '(using VISA_API_KEY)',
-    VISA_SHARED_SECRET: process.env.VISA_SHARED_SECRET ? 'set' : 'MISSING',
-    VISA_CLIENT_CERT: hasVisaCert ? 'set' : 'MISSING',
-    VISA_CLIENT_KEY: hasVisaKey ? 'set' : 'MISSING',
-    VISA_CA_BUNDLE: hasVisaCaBundle ? 'set' : 'MISSING',
+    POKPAY_API_BASE: process.env.POKPAY_API_BASE ?? 'https://api.pokpay.io',
+    POKPAY_KEY_ID: process.env.POKPAY_KEY_ID ? 'set' : 'MISSING',
+    POKPAY_KEY_SECRET: process.env.POKPAY_KEY_SECRET ? 'set' : 'MISSING',
+    POKPAY_MERCHANT_ID: process.env.POKPAY_MERCHANT_ID ? 'set' : 'MISSING',
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? '(using localhost default)',
     NODE_ENV: process.env.NODE_ENV ?? 'not set',
   }
@@ -63,29 +27,12 @@ export async function GET() {
 
   const allRequired =
     process.env.DATABASE_URL &&
-    process.env.VISA_API_BASE_URL &&
-    process.env.VISA_API_USERNAME &&
-    process.env.VISA_API_KEY &&
-    process.env.VISA_SHARED_SECRET &&
-    hasVisaCert &&
-    hasVisaKey
+    process.env.POKPAY_KEY_ID &&
+    process.env.POKPAY_KEY_SECRET &&
+    process.env.POKPAY_MERCHANT_ID
+
   return NextResponse.json(
-    {
-      status: allRequired ? 'ok' : 'degraded',
-      env: checks,
-      visaDiagnostics: {
-        apiKey: preview(process.env.VISA_API_KEY),
-        srcClientId: preview(process.env.VISA_SRC_CLIENT_ID || process.env.VISA_API_KEY),
-        sharedSecret: {
-          ...preview(process.env.VISA_SHARED_SECRET),
-          likelyEncryptedValue: (process.env.VISA_SHARED_SECRET?.trim().length ?? 0) > 200,
-        },
-        clientCert: preview(visaCert ?? undefined),
-        clientKey: preview(visaClientKey ?? undefined),
-        caBundle: preview(visaCaBundle ?? undefined),
-      },
-      db: dbStatus,
-    },
-    { status: allRequired ? 200 : 503 }
+    { status: allRequired ? 'ok' : 'degraded', env: checks, db: dbStatus },
+    { status: allRequired ? 200 : 503 },
   )
 }

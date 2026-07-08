@@ -78,8 +78,8 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
   }, [])
 
   const [error, setError] = useState('')
-  const [paymentNotice, setPaymentNotice] = useState('')
   const [processing, setProcessing] = useState(false)
+  const [pokpayProcessing, setPokpayProcessing] = useState(false)
   const [promoInput, setPromoInput] = useState('')
   const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number } | null>(null)
   const [promoLoading, setPromoLoading] = useState(false)
@@ -103,42 +103,6 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
     return null
   }
 
-  async function handleStartCardPayment() {
-    const validationError = validate()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-    setError('')
-    setPaymentNotice('')
-    setProcessing(true)
-    try {
-      const res = await fetch('/api/card-payments/create-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const data = await res.json() as { redirectUrl?: string; message?: string; error?: string }
-      if (!res.ok) {
-        setError(data.error ?? dictionary.checkout.failedToPlaceOrder)
-        return
-      }
-      if (data.message) {
-        setPaymentNotice(data.message)
-        return
-      }
-      if (!data.redirectUrl) {
-        setError(dictionary.checkout.failedToPlaceOrder)
-        return
-      }
-      window.location.href = data.redirectUrl
-    } catch {
-      setError(dictionary.checkout.networkError)
-    } finally {
-      setProcessing(false)
-    }
-  }
-
   async function handleBankTransfer() {
     const validationError = validate()
     if (validationError) {
@@ -146,7 +110,6 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
       return
     }
     setError('')
-    setPaymentNotice('')
     setProcessing(true)
     try {
       const res = await fetch('/api/checkout', {
@@ -164,6 +127,33 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
       setError(dictionary.checkout.networkError)
     } finally {
       setProcessing(false)
+    }
+  }
+
+  async function handlePokpay() {
+    const validationError = validate()
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    setError('')
+    setPokpayProcessing(true)
+    try {
+      const res = await fetch('/api/pokpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        setError(data.error ?? 'Could not start POK payment. Please try again.')
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      setError(dictionary.checkout.networkError)
+    } finally {
+      setPokpayProcessing(false)
     }
   }
 
@@ -284,22 +274,20 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
             </div>
 
             {error && <div className="flash-error mt-6">{error}</div>}
-            {paymentNotice && (
-              <div className="mt-6 border border-green-200 bg-green-50 px-4 py-3 font-sans text-sm text-green-800">
-                {paymentNotice}
-              </div>
-            )}
 
             <div className="mt-10">
               <h2 className="font-serif text-2xl text-stone mb-6">{dictionary.checkout.payment}</h2>
 
               <button
-                onClick={handleStartCardPayment}
-                disabled={processing}
+                onClick={handlePokpay}
+                disabled={pokpayProcessing}
                 className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {processing ? dictionary.checkout.preparingPayment : dictionary.checkout.payWithCard}
+                {pokpayProcessing ? 'Redirecting to POK...' : 'Pay with POK'}
               </button>
+              <p className="text-xs font-sans text-stone-pale text-center mt-2">
+                Secure payment powered by POK Albania.
+              </p>
 
               {bankTransferEnabled && (
                 <>

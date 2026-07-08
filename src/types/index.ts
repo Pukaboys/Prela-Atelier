@@ -22,6 +22,8 @@ export interface SessionData {
   sessionNonce?: string
   cart?: CartItem[]
   viewedProductIds?: number[]
+  pokpayPendingForm?: CheckoutFormData
+  pokpayOrderId?: string
   pendingOrder?: CheckoutFormData
   appliedPromo?: AppliedPromo
   customOrderQuote?: {

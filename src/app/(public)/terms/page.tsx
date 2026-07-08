@@ -41,7 +41,7 @@ export default function TermsPage() {
           title: 'Pricing, Currency, and Payment',
           body: [
             'Product prices are stored and processed in EUR. Currency selectors may show approximate converted display prices for customer convenience.',
-            'Checkout may accept Visa and Mastercard card payments through the approved official card-payment gateway, and bank transfer where enabled. Orders are processed after payment is confirmed.',
+            'Payment options may include POK Albania or bank transfer depending on availability. Orders paid by bank transfer are processed after payment is received and confirmed.',
           ],
         },
         {

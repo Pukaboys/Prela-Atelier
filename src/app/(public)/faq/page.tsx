@@ -33,7 +33,7 @@ const FAQS = [
       },
       {
         question: 'Which payment methods are available?',
-        answer: 'Checkout supports Visa and Mastercard card payments through the approved official card-payment gateway where available, plus bank transfer as a manual fallback. Prela Atelier does not store full card numbers on its servers.',
+        answer: 'Available payment methods may include POK Albania or bank transfer depending on checkout configuration and destination. Bank transfer orders are confirmed after payment is received.',
       },
       {
         question: 'Can I download an invoice?',

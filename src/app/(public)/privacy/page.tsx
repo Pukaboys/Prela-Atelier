@@ -37,8 +37,8 @@ export default function PrivacyPolicyPage() {
         {
           title: 'Payments',
           body: [
-            'Visa and Mastercard payments are handled by the approved official card-payment gateway where available. We do not store full card numbers on our servers.',
-            'For bank transfer orders, we use the checkout and order details needed to identify and confirm your payment. The payment gateway or bank may process your data according to its own privacy and security policies.',
+            'Payments are handled by third-party payment providers such as POK Albania where enabled. We do not store full card numbers on our servers.',
+            'Payment providers may process your data according to their own privacy and security policies.',
           ],
         },
         {
