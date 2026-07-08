@@ -31,6 +31,8 @@ type OrderWithNotes = {
   createdAt?: string | Date | null
 }
 
+const PAYMENT_REFERENCE_PATTERN = /\[\[payment_reference:[^\]]+\]\]/g
+
 type OrderFormInput = Pick<
   CheckoutInput,
   'name' | 'email' | 'address' | 'city' | 'postcode' | 'country'
@@ -43,8 +45,21 @@ export function getCustomerOrderNotes(order: OrderWithNotes) {
   const clean = (order.notes ?? '')
     .replace(PRODUCTION_METADATA_PATTERN, '')
     .replace(/\[\[inventory_applied:[^\]]+\]\]/g, '')
+    .replace(PAYMENT_REFERENCE_PATTERN, '')
     .trim()
   return clean.length > 0 ? clean : null
+}
+
+function buildPaymentReferenceToken(paymentReference?: string | null) {
+  return paymentReference ? `[[payment_reference:${paymentReference}]]` : null
+}
+
+function buildPaymentReferenceLockId(paymentReference: string) {
+  let hash = 0
+  for (const char of paymentReference) {
+    hash = (hash * 31 + char.charCodeAt(0)) | 0
+  }
+  return hash
 }
 
 export function getProductionStage(order: OrderWithNotes): ProductionStage {
@@ -57,18 +72,20 @@ export function buildOrderNotes(
   options: {
     productionPriority?: ProductionPriority
     eventAt?: string
+    paymentReference?: string
   } = {},
 ) {
   const cleanNotes = getCustomerOrderNotes({ notes: customerNotes })
   const inventoryAppliedAt = extractInventoryAppliedAt(customerNotes)
   const inventoryToken = inventoryAppliedAt ? buildInventoryAppliedToken(inventoryAppliedAt) : null
+  const paymentReferenceToken = buildPaymentReferenceToken(options.paymentReference)
   const metadataTokens = buildProductionMetadataTokens({
     existingNotes: customerNotes,
     stage: productionStage,
     priority: options.productionPriority,
     eventAt: options.eventAt,
   })
-  const tokens = [...metadataTokens, inventoryToken].filter(Boolean).join('\n\n')
+  const tokens = [...metadataTokens, inventoryToken, paymentReferenceToken].filter(Boolean).join('\n\n')
 
   return cleanNotes ? `${cleanNotes}\n\n${tokens}` : tokens
 }
@@ -148,10 +165,12 @@ export async function createConfirmedOrder({
   form,
   cart,
   appliedPromo,
+  paymentReference,
 }: {
   form: OrderFormInput
   cart: CartItem[]
   appliedPromo?: AppliedPromo
+  paymentReference?: string
 }) {
   const { settings, subtotal, discount, shipping, total } = await calculateOrderAmounts({
     country: form.country,
@@ -159,8 +178,26 @@ export async function createConfirmedOrder({
     appliedPromo,
   })
   const orderCode = generateOrderCode()
+  let finalOrderCode = orderCode
+  let created = true
 
   await prisma.$transaction(async (tx) => {
+    const paymentReferenceToken = buildPaymentReferenceToken(paymentReference)
+    if (paymentReference && paymentReferenceToken) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${buildPaymentReferenceLockId(paymentReference)})`
+
+      const existing = await tx.order.findFirst({
+        where: { notes: { contains: paymentReferenceToken } },
+        select: { orderCode: true },
+      })
+
+      if (existing) {
+        finalOrderCode = existing.orderCode
+        created = false
+        return
+      }
+    }
+
     await assertCartInventoryAvailable(cart, tx)
 
     const order = await tx.order.create({
@@ -177,7 +214,7 @@ export async function createConfirmedOrder({
         shipping,
         total,
         status: 'confirmed',
-        notes: buildOrderNotes(form.notes || null, 'Design'),
+        notes: buildOrderNotes(form.notes || null, 'Design', { paymentReference }),
         promoCode: appliedPromo?.code ?? null,
         discount,
       },
@@ -205,7 +242,8 @@ export async function createConfirmedOrder({
   })
 
   return {
-    orderCode,
+    orderCode: finalOrderCode,
+    created,
     subtotal,
     shipping,
     discount,

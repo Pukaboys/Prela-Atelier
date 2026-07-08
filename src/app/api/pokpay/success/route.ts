@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       form,
       cart,
       appliedPromo: session.appliedPromo,
+      paymentReference: `pokpay:${pokOrderId}`,
     })
 
     session.cart = []
@@ -59,26 +60,28 @@ export async function GET(request: NextRequest) {
     const customerCurrencyOptions = await getDisplayCurrencyOptions(order.settings)
     const adminCurrencyOptions = getCurrencyFormatOptions(order.settings)
 
-    await Promise.allSettled([
-      sendOrderConfirmation({
-        to: form.email,
-        customerName: form.name,
-        orderCode: order.orderCode,
-        items: order.emailItems,
-        shipping: order.shipping,
-        total: order.total,
-        currencyOptions: customerCurrencyOptions,
-      }),
-      sendNewOrderAlert({
-        customerName: form.name,
-        customerEmail: form.email,
-        orderCode: order.orderCode,
-        items: order.emailItems,
-        shipping: order.shipping,
-        total: order.total,
-        currencyOptions: adminCurrencyOptions,
-      }),
-    ])
+    if (order.created) {
+      await Promise.allSettled([
+        sendOrderConfirmation({
+          to: form.email,
+          customerName: form.name,
+          orderCode: order.orderCode,
+          items: order.emailItems,
+          shipping: order.shipping,
+          total: order.total,
+          currencyOptions: customerCurrencyOptions,
+        }),
+        sendNewOrderAlert({
+          customerName: form.name,
+          customerEmail: form.email,
+          orderCode: order.orderCode,
+          items: order.emailItems,
+          shipping: order.shipping,
+          total: order.total,
+          currencyOptions: adminCurrencyOptions,
+        }),
+      ])
+    }
 
     return NextResponse.redirect(new URL(`/order-confirmed?order=${order.orderCode}`, request.url))
   } catch (err) {
