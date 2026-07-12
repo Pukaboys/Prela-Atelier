@@ -35,6 +35,7 @@ type Order = {
   shipping: number
   total: number
   status: string
+  orderLabel: string | null
   productionStage: ProductionStage
   productionPriority: ProductionPriority
   production: ProductionManagementSummary
@@ -390,7 +391,16 @@ export default function AdminOrdersPage() {
                     className={order.production.isDelayed ? 'bg-red-50/70' : order.production.isUrgent ? 'bg-amber-50/70' : ''}
                   >
                     <td className="font-mono text-xs text-gold">{order.orderCode}</td>
-                    <td className="font-sans text-sm text-stone">{order.customerName}</td>
+                    <td className="font-sans text-sm text-stone">
+                      <div className="flex flex-col gap-1">
+                        <span>{order.customerName}</span>
+                        {order.orderLabel ? (
+                          <span className="w-fit border border-gold/30 bg-gold/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-gold">
+                            {order.orderLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
                     <td className="font-sans text-xs text-stone-mid">{order.customerEmail}</td>
                     <td className="font-sans text-sm">{money(order.total)}</td>
                     <td>
@@ -451,6 +461,11 @@ export default function AdminOrdersPage() {
                 <p className="font-sans text-xs text-stone-mid mt-0.5">
                   {new Date(selectedOrder.createdAt).toLocaleString('fr-FR')}
                 </p>
+                {selectedOrder.orderLabel ? (
+                  <span className="inline-block mt-2 border border-gold/30 bg-gold/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-gold">
+                    {selectedOrder.orderLabel}
+                  </span>
+                ) : null}
               </div>
               <div className="flex items-center gap-3">
                 <a

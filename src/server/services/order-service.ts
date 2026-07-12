@@ -118,12 +118,15 @@ function toSerializableOrder<
     status?: string | null
     createdAt?: string | Date | null
     items: Array<{
+      productId?: number | null
+      name?: string | null
       priceEur: DecimalLike
       subtotal: DecimalLike
     }>
   },
 >(order: TOrder) {
   const production = buildProductionManagementSummary(order)
+  const isCustomOrder = order.items.some((item) => item.productId == null || String(item.name).startsWith('Custom / Bespoke'))
 
   return {
     ...order,
@@ -135,6 +138,7 @@ function toSerializableOrder<
     productionStage: getProductionStage(order),
     productionPriority: production.priority,
     production,
+    orderLabel: isCustomOrder ? 'Custom' : null,
     items: order.items.map((item) => ({
       ...item,
       priceEur: toNumber(item.priceEur),
@@ -268,6 +272,96 @@ export async function createConfirmedOrder({
     total,
     settings,
     emailItems: buildOrderEmailItems(cart),
+  }
+}
+
+export async function createConfirmedCustomOrder({
+  form,
+  title,
+  description,
+  amountEur,
+  paymentReference,
+}: {
+  form: OrderFormInput
+  title: string
+  description?: string | null
+  amountEur: number
+  paymentReference?: string
+}) {
+  const settings = await getSettings()
+  const subtotal = Math.round(amountEur * 100) / 100
+  const shipping = 0
+  const discount = 0
+  const total = subtotal
+  const orderCode = generateOrderCode()
+  let finalOrderCode = orderCode
+  let created = true
+
+  await prisma.$transaction(async (tx) => {
+    const paymentReferenceToken = buildPaymentReferenceToken(paymentReference)
+    if (paymentReference && paymentReferenceToken) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${buildPaymentReferenceLockId(paymentReference)})`
+
+      const existing = await tx.order.findFirst({
+        where: { notes: { contains: paymentReferenceToken } },
+        select: { orderCode: true },
+      })
+
+      if (existing) {
+        finalOrderCode = existing.orderCode
+        created = false
+        return
+      }
+    }
+
+    const order = await tx.order.create({
+      data: {
+        orderCode,
+        customerName: form.name,
+        customerEmail: form.email,
+        customerPhone: form.phone || null,
+        address: form.address,
+        city: form.city,
+        postcode: form.postcode,
+        country: form.country,
+        subtotal,
+        shipping,
+        total,
+        status: 'confirmed',
+        notes: buildOrderNotes(
+          [form.notes, description, 'Custom / Bespoke order'].filter(Boolean).join('\n\n'),
+          'Design',
+          { paymentReference },
+        ),
+        discount,
+        items: {
+          create: [{
+            productId: null,
+            name: `Custom / Bespoke - ${title}`,
+            priceEur: subtotal,
+            quantity: 1,
+            subtotal,
+          }],
+        },
+      },
+    })
+
+    await applyInventoryForConfirmedOrder(order.id, tx)
+  })
+
+  return {
+    orderCode: finalOrderCode,
+    created,
+    subtotal,
+    shipping,
+    discount,
+    total,
+    settings,
+    emailItems: [{
+      name: `Custom / Bespoke - ${title}`,
+      quantity: 1,
+      subtotal,
+    }],
   }
 }
 

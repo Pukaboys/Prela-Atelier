@@ -24,6 +24,9 @@ export interface SessionData {
   viewedProductIds?: number[]
   pokpayPendingForm?: CheckoutFormData
   pokpayOrderId?: string
+  bespokePaymentToken?: string
+  bespokePaymentForm?: CheckoutFormData
+  bespokePaymentPokOrderId?: string
   pendingOrder?: CheckoutFormData
   appliedPromo?: AppliedPromo
   customOrderQuote?: {

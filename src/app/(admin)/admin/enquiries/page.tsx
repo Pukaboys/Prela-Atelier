@@ -12,6 +12,16 @@ type Enquiry = {
   status: string
   notes: string
   createdAt: string
+  paymentLinks?: {
+    token: string
+    title: string
+    description: string
+    amountEur: number
+    status: 'open' | 'paid' | 'disabled'
+    createdAt: string
+    paidAt?: string
+    orderCode?: string
+  }[]
 }
 
 const ALL_STATUSES = ['new', 'read', 'replied', 'closed'] as const
@@ -31,6 +41,10 @@ export default function AdminEnquiriesPage() {
   const [filterStatus, setFilterStatus] = useState<EnquiryStatus | ''>('')
   const [search, setSearch] = useState('')
   const [notes, setNotes] = useState('')
+  const [paymentTitle, setPaymentTitle] = useState('')
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentDescription, setPaymentDescription] = useState('')
+  const [paymentMsg, setPaymentMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<number | null>(null)
 
@@ -46,10 +60,19 @@ export default function AdminEnquiriesPage() {
   function openDetail(e: Enquiry) {
     setSelected(e)
     setNotes(e.notes ?? '')
+    setPaymentTitle(e.type ? `Custom ${e.type}` : 'Custom Bespoke Order')
+    setPaymentAmount('')
+    setPaymentDescription('')
+    setPaymentMsg(null)
     // Auto-mark as read if new
     if (e.status === 'new') {
       updateEnquiry(e.id, { status: 'read' })
     }
+  }
+
+  function paymentUrl(token: string) {
+    if (typeof window === 'undefined') return `/custom-payment/${token}`
+    return `${window.location.origin}/custom-payment/${token}`
   }
 
   async function updateEnquiry(id: number, payload: { status?: EnquiryStatus; notes?: string }) {
@@ -74,6 +97,42 @@ export default function AdminEnquiriesPage() {
       setSelected(null)
       load()
     }
+  }
+
+  async function createPaymentLink() {
+    if (!selected) return
+    setSaving(true)
+    setPaymentMsg(null)
+    const amountEur = Number(paymentAmount)
+    const res = await fetch(`/api/admin/enquiries/${selected.id}/payment-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: paymentTitle,
+        description: paymentDescription,
+        amountEur,
+      }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      const updated = {
+        ...selected,
+        paymentLinks: [data.link, ...(selected.paymentLinks ?? [])],
+      }
+      setSelected(updated)
+      setEnquiries((prev) => prev.map((item) => (item.id === selected.id ? updated : item)))
+      setPaymentMsg('Payment link created.')
+      setPaymentAmount('')
+      try {
+        await navigator.clipboard.writeText(paymentUrl(data.link.token))
+        setPaymentMsg('Payment link created and copied.')
+      } catch {
+        // Clipboard may be unavailable in some browsers.
+      }
+    } else {
+      setPaymentMsg(data.error ?? 'Could not create payment link.')
+    }
+    setSaving(false)
   }
 
   const q = search.toLowerCase()
@@ -245,6 +304,75 @@ export default function AdminEnquiriesPage() {
                 >
                   {saving ? 'Saving…' : 'Save Notes'}
                 </button>
+              </div>
+
+              {/* Private payment link */}
+              <div className="border-t border-beige pt-5">
+                <p className="text-stone-pale text-xs uppercase tracking-wider mb-2">Private Payment Link</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label">Custom Label / Product Name</label>
+                    <input
+                      className="form-input mt-1"
+                      value={paymentTitle}
+                      onChange={(event) => setPaymentTitle(event.target.value)}
+                      placeholder="Custom marble table"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Amount EUR</label>
+                    <input
+                      className="form-input mt-1"
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={paymentAmount}
+                      onChange={(event) => setPaymentAmount(event.target.value)}
+                      placeholder="1200"
+                    />
+                  </div>
+                </div>
+                <textarea
+                  className="form-textarea mt-3"
+                  rows={2}
+                  value={paymentDescription}
+                  onChange={(event) => setPaymentDescription(event.target.value)}
+                  placeholder="Short description shown to the client..."
+                />
+                <div className="flex items-center gap-3 mt-3">
+                  <button
+                    onClick={createPaymentLink}
+                    disabled={saving || !paymentTitle.trim() || Number(paymentAmount) <= 0}
+                    className="btn-primary text-sm disabled:opacity-60"
+                  >
+                    Create Payment Link
+                  </button>
+                  {paymentMsg && <span className="font-sans text-xs text-stone-mid">{paymentMsg}</span>}
+                </div>
+
+                {(selected.paymentLinks?.length ?? 0) > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {selected.paymentLinks!.map((link) => (
+                      <div key={link.token} className="border border-beige bg-cream/50 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-sans text-sm text-stone">{link.title} - EUR {link.amountEur}</p>
+                            <p className="font-sans text-xs text-stone-pale mt-1">
+                              {link.status === 'paid' ? `Paid${link.orderCode ? ` | ${link.orderCode}` : ''}` : 'Open'} | {paymentUrl(link.token)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => navigator.clipboard.writeText(paymentUrl(link.token)).catch(() => null)}
+                            className="text-xs text-gold hover:text-gold-dark font-sans uppercase tracking-wider"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Delete */}
