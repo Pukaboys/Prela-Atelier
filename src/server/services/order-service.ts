@@ -41,6 +41,24 @@ type OrderFormInput = Pick<
   notes?: string | null
 }
 
+export const STALE_PENDING_ORDER_DAYS = 3
+
+function getStalePendingOrderCutoff() {
+  return new Date(Date.now() - STALE_PENDING_ORDER_DAYS * 24 * 60 * 60 * 1000)
+}
+
+export async function moveStalePendingOrdersToTrash() {
+  return prisma.order.updateMany({
+    where: {
+      status: 'pending',
+      createdAt: { lt: getStalePendingOrderCutoff() },
+    },
+    data: {
+      status: 'cancelled',
+    },
+  })
+}
+
 export function getCustomerOrderNotes(order: OrderWithNotes) {
   const clean = (order.notes ?? '')
     .replace(PRODUCTION_METADATA_PATTERN, '')
@@ -321,6 +339,8 @@ export async function createPendingBankTransferOrder({
 }
 
 export async function listOrdersForAdmin() {
+  await moveStalePendingOrdersToTrash()
+
   const orders = await prisma.order.findMany({
     orderBy: { createdAt: 'desc' },
     include: {

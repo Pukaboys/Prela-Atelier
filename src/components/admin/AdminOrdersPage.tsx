@@ -54,6 +54,14 @@ const STATUS_COLORS: Record<Status, string> = {
   cancelled: 'status-cancelled',
 }
 
+const STATUS_LABELS: Record<Status, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Trash',
+}
+
 function ProductionProgressBar({ stage }: { stage: ProductionStage }) {
   const currentStageIndex = getProductionStageIndex(stage)
 
@@ -333,7 +341,7 @@ export default function AdminOrdersPage() {
             <option value="">All statuses</option>
             {ALL_STATUSES.map((status) => (
               <option key={status} value={status}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {STATUS_LABELS[status]}
               </option>
             ))}
           </select>
@@ -387,7 +395,7 @@ export default function AdminOrdersPage() {
                     <td className="font-sans text-sm">{money(order.total)}</td>
                     <td>
                       <span className={STATUS_COLORS[order.status as Status] ?? 'badge'}>
-                        {order.status}
+                        {STATUS_LABELS[order.status as Status] ?? order.status}
                       </span>
                     </td>
                     <td className="text-xs font-sans uppercase tracking-[0.16em] text-stone-mid">
@@ -628,7 +636,7 @@ export default function AdminOrdersPage() {
                           : 'border-beige text-stone-mid hover:border-gold hover:text-gold'
                       } disabled:opacity-60`}
                     >
-                      {status}
+                      {STATUS_LABELS[status]}
                     </button>
                   ))}
                 </div>

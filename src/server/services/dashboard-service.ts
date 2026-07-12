@@ -1,6 +1,7 @@
 import prisma from '@/lib/db'
 import { toNumber } from '@/server/utils/money'
 import { getAnalyticsIntelligence } from '@/server/services/analytics-intelligence-service'
+import { moveStalePendingOrdersToTrash } from '@/server/services/order-service'
 
 const REVENUE_STATUSES = new Set(['confirmed', 'shipped', 'delivered'])
 const ORDER_STATUS_ORDER = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
@@ -230,6 +231,8 @@ function buildConversionMetrics(
 }
 
 export async function getAdminDashboardOverview() {
+  await moveStalePendingOrdersToTrash()
+
   const [totalProducts, orders, enquiries, orderItems, intelligence] = await Promise.all([
     prisma.product.count(),
     prisma.order.findMany({
