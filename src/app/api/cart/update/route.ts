@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getSession } from '@/lib/session'
 import { buildCartItemId, normalizeCartItems } from '@/lib/cart'
-import { assertCartInventoryAvailable, InventoryError } from '@/server/services/inventory-service'
 
 const schema = z.object({
   cartItemId: z.string().min(1).optional(),
@@ -37,8 +36,6 @@ export async function POST(request: NextRequest) {
         quantity,
       }
 
-      await assertCartInventoryAvailable(nextCart)
-
       session.cart = nextCart
       await session.save()
     }
@@ -46,10 +43,6 @@ export async function POST(request: NextRequest) {
     const cartCount = nextCart.reduce((sum, item) => sum + item.quantity, 0)
     return NextResponse.json({ success: true, cartCount })
   } catch (err) {
-    if (err instanceof InventoryError) {
-      return NextResponse.json({ error: err.message }, { status: 409 })
-    }
-
     console.error('[cart/update]', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

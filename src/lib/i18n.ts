@@ -123,6 +123,7 @@ export interface ClientDictionary {
     adding: string
     addedToCart: string
     addToCart: string
+    madeToOrder: string
     inStock: (count: number) => string
   }
   trackOrder: {
@@ -325,6 +326,7 @@ const dictionaries: Record<LanguageCode, ClientDictionary> = {
       adding: 'Adding...',
       addedToCart: 'Added to Cart',
       addToCart: 'Add to Cart',
+      madeToOrder: 'Made to order',
       inStock: (count) => `${count} in stock`,
     },
     trackOrder: {
@@ -537,6 +539,7 @@ const dictionaries: Record<LanguageCode, ClientDictionary> = {
       adding: 'Duke shtuar...',
       addedToCart: 'U shtua ne Shporte',
       addToCart: 'Shto ne Shporte',
+      madeToOrder: 'Me porosi',
       inStock: (count) => `${count} ne stok`,
     },
     trackOrder: {

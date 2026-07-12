@@ -28,14 +28,6 @@ export function ProductActions({
   const router = useRouter()
   const { dictionary } = useLanguage()
 
-  if (stock <= 0) {
-    return (
-      <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
-        {dictionary.product.outOfStock}
-      </button>
-    )
-  }
-
   async function handleAdd() {
     setLoading(true)
     try {
@@ -81,24 +73,24 @@ export function ProductActions({
           <input
             type="number"
             min={1}
-            max={stock}
+            max={99}
             value={quantity}
             onChange={(e) => {
               const v = parseInt(e.target.value)
-              if (!isNaN(v) && v >= 1 && v <= stock) setQuantity(v)
+              if (!isNaN(v) && v >= 1 && v <= 99) setQuantity(v)
             }}
             className="w-16 text-center border border-beige text-stone font-sans py-2 focus:outline-none focus:border-gold"
           />
           <button
             type="button"
-            onClick={() => setQuantity((q) => Math.min(stock, q + 1))}
-            disabled={quantity >= stock}
+            onClick={() => setQuantity((q) => Math.min(99, q + 1))}
+            disabled={quantity >= 99}
             className="w-10 h-10 flex items-center justify-center border border-beige text-stone hover:border-gold transition-colors disabled:opacity-40 font-sans text-lg"
           >
             +
           </button>
           <span className="text-xs font-sans text-stone-pale ml-2">
-            {dictionary.product.inStock(stock)}
+            {stock > 0 ? dictionary.product.inStock(stock) : dictionary.product.madeToOrder}
           </span>
         </div>
       </div>

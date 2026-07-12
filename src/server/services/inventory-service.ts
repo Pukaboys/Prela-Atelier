@@ -140,7 +140,19 @@ export async function assertCartInventoryAvailable(
   cart: CartInventoryItem[],
   client: InventoryDbClient = prisma,
 ) {
-  if (cart.length === 0) return
+  const availability = await getCartInventoryAvailability(cart, client)
+  if (availability.issues.length > 0) {
+    throw buildInventoryError(availability.issues)
+  }
+}
+
+export async function getCartInventoryAvailability(
+  cart: CartInventoryItem[],
+  client: InventoryDbClient = prisma,
+) {
+  if (cart.length === 0) {
+    return { available: true, issues: [] as InventoryAvailabilityIssue[] }
+  }
 
   const aggregatedRequests = new Map<number, CartInventoryItem>()
   for (const item of cart) {
@@ -192,8 +204,9 @@ export async function assertCartInventoryAvailable(
     }
   }
 
-  if (issues.length > 0) {
-    throw buildInventoryError(issues)
+  return {
+    available: issues.length === 0,
+    issues,
   }
 }
 

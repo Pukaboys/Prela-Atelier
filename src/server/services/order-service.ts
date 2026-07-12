@@ -16,7 +16,7 @@ import {
   applyInventoryForConfirmedOrder,
   buildInventoryAppliedToken,
   extractInventoryAppliedAt,
-  assertCartInventoryAvailable,
+  getCartInventoryAvailability,
 } from '@/server/services/inventory-service'
 import type { AppliedPromo, CartItem } from '@/types'
 import type {
@@ -86,6 +86,16 @@ function isEnquiryCustomOrder(notes?: string | null) {
 
 function isCatalogueOrder(items: Array<{ productId?: number | null }>) {
   return items.length > 0 && items.every((item) => item.productId != null)
+}
+
+function toInventoryItems(items: Array<{ productId?: number | null; quantity: number; name: string }>) {
+  return items
+    .filter((item): item is { productId: number; quantity: number; name: string } => item.productId != null)
+    .map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      name: item.name,
+    }))
 }
 
 export function getProductionStage(order: OrderWithNotes): ProductionStage {
@@ -228,7 +238,8 @@ export async function createConfirmedOrder({
       }
     }
 
-    await assertCartInventoryAvailable(cart, tx)
+    const inventoryAvailability = await getCartInventoryAvailability(cart, tx)
+    const productionStage = inventoryAvailability.available ? 'Ready' : 'Design'
 
     const order = await tx.order.create({
       data: {
@@ -244,7 +255,7 @@ export async function createConfirmedOrder({
         shipping,
         total,
         status: 'confirmed',
-        notes: buildOrderNotes(form.notes || null, 'Ready', { paymentReference }),
+        notes: buildOrderNotes(form.notes || null, productionStage, { paymentReference }),
         promoCode: appliedPromo?.code ?? null,
         discount,
       },
@@ -268,7 +279,9 @@ export async function createConfirmedOrder({
       })
     }
 
-    await applyInventoryForConfirmedOrder(order.id, tx)
+    if (inventoryAvailability.available) {
+      await applyInventoryForConfirmedOrder(order.id, tx)
+    }
   })
 
   return {
@@ -322,7 +335,7 @@ export async function createConfirmedCustomOrder({
       }
     }
 
-    const order = await tx.order.create({
+    await tx.order.create({
       data: {
         orderCode,
         customerName: form.name,
@@ -354,7 +367,6 @@ export async function createConfirmedCustomOrder({
       },
     })
 
-    await applyInventoryForConfirmedOrder(order.id, tx)
   })
 
   return {
@@ -478,7 +490,8 @@ export async function createPendingBankTransferOrder({
   const orderCode = generateOrderCode()
 
   await prisma.$transaction(async (tx) => {
-    await assertCartInventoryAvailable(cart, tx)
+    const inventoryAvailability = await getCartInventoryAvailability(cart, tx)
+    const productionStage = inventoryAvailability.available ? 'Ready' : 'Design'
 
     await tx.order.create({
       data: {
@@ -494,7 +507,7 @@ export async function createPendingBankTransferOrder({
         shipping,
         total,
         status: 'pending',
-        notes: buildOrderNotes(form.notes || null, 'Ready'),
+        notes: buildOrderNotes(form.notes || null, productionStage),
         promoCode: appliedPromo?.code ?? null,
         discount,
         items: {
@@ -567,15 +580,20 @@ export async function updateOrderStatus(orderId: number, status: OrderStatusInpu
       return null
     }
 
+    const inventoryAvailability = isCatalogueOrder(existing.items)
+      ? await getCartInventoryAvailability(toInventoryItems(existing.items), tx)
+      : { available: false }
     const nextStage = getProductionStage(existing)
+    const targetStage =
+      status === 'shipped' || status === 'delivered'
+        ? 'Ready'
+        : status === 'confirmed' && isCatalogueOrder(existing.items)
+          ? inventoryAvailability.available ? 'Ready' : 'Design'
+          : null
     const shouldMarkReady =
-      getProductionStageIndex(nextStage) < getProductionStageIndex('Ready') &&
-      (
-        status === 'shipped' ||
-        status === 'delivered' ||
-        (status === 'confirmed' && isCatalogueOrder(existing.items))
-      )
-    const notes = shouldMarkReady ? buildOrderNotes(existing.notes, 'Ready') : undefined
+      targetStage !== null &&
+      getProductionStageIndex(nextStage) !== getProductionStageIndex(targetStage)
+    const notes = shouldMarkReady ? buildOrderNotes(existing.notes, targetStage) : undefined
 
     await tx.order.update({
       where: { id: orderId },
@@ -586,7 +604,9 @@ export async function updateOrderStatus(orderId: number, status: OrderStatusInpu
     })
 
     if (status === 'confirmed' && existing.status !== 'confirmed') {
-      await applyInventoryForConfirmedOrder(orderId, tx)
+      if (inventoryAvailability.available) {
+        await applyInventoryForConfirmedOrder(orderId, tx)
+      }
       sendConfirmation = true
     }
 

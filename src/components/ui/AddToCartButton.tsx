@@ -65,14 +65,6 @@ export function AddToCartButton({
     }
   }, [mounted, variationModalOpen])
 
-  if (stock <= 0) {
-    return (
-      <button disabled className="w-full border border-stone/20 text-stone-pale text-[11px] tracking-widest uppercase py-3 font-sans rounded opacity-50 cursor-not-allowed">
-        {dictionary.product.outOfStock}
-      </button>
-    )
-  }
-
   async function performAdd(selectedVariation?: QuickAddVariationOption | null) {
     setLoading(true)
     setLoadingVariationId(selectedVariation?.materialId ?? null)

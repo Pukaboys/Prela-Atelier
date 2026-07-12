@@ -3,7 +3,6 @@ import { buildOrderItemName, normalizeCartItems } from '@/lib/cart'
 import { getSession } from '@/lib/session'
 import { getSettings } from '@/lib/settings'
 import { createPokOrder, PokPayApiError, PokPayConfigError } from '@/lib/pokpay'
-import { assertCartInventoryAvailable, InventoryError } from '@/server/services/inventory-service'
 import { calculateOrderAmounts } from '@/server/services/order-service'
 import { checkoutSchema } from '@/server/validations/order'
 
@@ -63,8 +62,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
     }
 
-    await assertCartInventoryAvailable(cart)
-
     const form = parsed.data
     const { subtotal, shipping, discount, total } = await calculateOrderAmounts({
       country: form.country,
@@ -103,10 +100,6 @@ export async function POST(request: NextRequest) {
       total,
     })
   } catch (err) {
-    if (err instanceof InventoryError) {
-      return NextResponse.json({ error: err.message }, { status: 409 })
-    }
-
     if (err instanceof PokPayConfigError) {
       console.error('[pokpay/create-order] configuration error:', err.message)
       return NextResponse.json({ error: err.message }, { status: 503 })
