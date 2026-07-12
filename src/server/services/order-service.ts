@@ -80,6 +80,10 @@ function buildPaymentReferenceLockId(paymentReference: string) {
   return hash
 }
 
+function isEnquiryCustomOrder(notes?: string | null) {
+  return /\[\[payment_reference:bespoke(?::|-bank:)/.test(notes ?? '')
+}
+
 export function getProductionStage(order: OrderWithNotes): ProductionStage {
   return getProductionStageFromOrder(order)
 }
@@ -126,7 +130,7 @@ function toSerializableOrder<
   },
 >(order: TOrder) {
   const production = buildProductionManagementSummary(order)
-  const isCustomOrder = order.items.some((item) => item.productId == null || String(item.name).startsWith('Custom / Bespoke'))
+  const isCustomOrder = isEnquiryCustomOrder(order.notes)
 
   return {
     ...order,
