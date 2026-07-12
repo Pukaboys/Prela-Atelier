@@ -69,7 +69,9 @@ function fallbackActions(context: Awaited<ReturnType<typeof getAdminAssistantCon
     item.orderCode.toLowerCase().includes(q) ||
     q.includes(item.orderCode.toLowerCase()) ||
     item.customerEmail.toLowerCase().includes(q) ||
-    item.customerName.toLowerCase().includes(q)
+    item.customerName.toLowerCase().includes(q) ||
+    q.includes(item.customerEmail.toLowerCase()) ||
+    q.includes(item.customerName.toLowerCase())
   )
   if (order) {
     actions.push({
@@ -84,6 +86,7 @@ function fallbackActions(context: Awaited<ReturnType<typeof getAdminAssistantCon
   const product = context.products.find((item) =>
     item.name.toLowerCase().includes(q) ||
     item.slug.toLowerCase().includes(q) ||
+    q.includes(item.name.toLowerCase()) ||
     q.includes(item.slug.toLowerCase())
   )
   if (product) {
@@ -99,6 +102,8 @@ function fallbackActions(context: Awaited<ReturnType<typeof getAdminAssistantCon
   const enquiry = context.enquiries.find((item) =>
     item.email.toLowerCase().includes(q) ||
     item.name.toLowerCase().includes(q) ||
+    q.includes(item.email.toLowerCase()) ||
+    q.includes(item.name.toLowerCase()) ||
     q.includes(String(item.id))
   )
   if (enquiry) {
@@ -112,6 +117,17 @@ function fallbackActions(context: Awaited<ReturnType<typeof getAdminAssistantCon
   }
 
   return actions.slice(0, 3)
+}
+
+function sanitizeActions(
+  actions: Array<{ type: string; label: string; href: string; id: number | null; code: string | null }>,
+) {
+  return actions.filter((action) => {
+    if (action.type === 'open_order') return action.href.startsWith('/admin/orders?order=')
+    if (action.type === 'open_product') return action.href.startsWith('/admin/products?product=')
+    if (action.type === 'open_enquiry') return action.href.startsWith('/admin/enquiries?enquiry=')
+    return false
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -128,7 +144,7 @@ export async function POST(request: NextRequest) {
   }
 
   const context = await getAdminAssistantContext()
-  const model = process.env.OPENAI_ADMIN_ASSISTANT_MODEL ?? 'gpt-5.2'
+  const model = process.env.OPENAI_ADMIN_ASSISTANT_MODEL ?? 'gpt-4.1-mini'
   const system = [
     'You are Prela Atelier Admin AI, a concise business assistant for the store owner.',
     'Use only the provided admin context. Do not invent orders, products, enquiries, totals, or dates.',
@@ -138,16 +154,10 @@ export async function POST(request: NextRequest) {
   ].join('\n')
 
   const input = [
-    { role: 'system', content: system },
-    ...parsed.data.history.map((item) => ({ role: item.role, content: item.content })),
-    {
-      role: 'user',
-      content: [
-        `Question: ${parsed.data.message}`,
-        `Admin context JSON: ${JSON.stringify(context)}`,
-      ].join('\n\n'),
-    },
-  ]
+    ...parsed.data.history.map((item) => `${item.role.toUpperCase()}: ${item.content}`),
+    `USER: ${parsed.data.message}`,
+    `ADMIN_CONTEXT_JSON: ${JSON.stringify(context)}`,
+  ].join('\n\n')
 
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -157,6 +167,7 @@ export async function POST(request: NextRequest) {
     },
     body: JSON.stringify({
       model,
+      instructions: system,
       input,
       text: {
         format: {
@@ -179,7 +190,8 @@ export async function POST(request: NextRequest) {
   try {
     const text = extractOutputText(data)
     const result = JSON.parse(text) as { answer: string; actions: Array<{ type: string; label: string; href: string; id: number | null; code: string | null }>; suggestions: string[] }
-    const mergedActions = result.actions.length > 0 ? result.actions : fallbackActions(context, parsed.data.message)
+    const cleanActions = sanitizeActions(result.actions)
+    const mergedActions = cleanActions.length > 0 ? cleanActions : fallbackActions(context, parsed.data.message)
     return NextResponse.json({
       answer: result.answer,
       actions: mergedActions.slice(0, 4),

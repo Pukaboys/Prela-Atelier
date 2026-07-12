@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 type Enquiry = {
   id: number
@@ -35,6 +36,7 @@ const STATUS_COLORS: Record<EnquiryStatus, string> = {
 }
 
 export default function AdminEnquiriesPage() {
+  const searchParams = useSearchParams()
   const [enquiries, setEnquiries] = useState<Enquiry[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Enquiry | null>(null)
@@ -57,6 +59,44 @@ export default function AdminEnquiriesPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const openTarget = (rawTarget: string | null | undefined) => {
+      const target = rawTarget?.toLowerCase()
+      if (!target || enquiries.length === 0) return
+
+      const match = enquiries.find((enquiry) =>
+        String(enquiry.id) === target ||
+        enquiry.email.toLowerCase() === target
+      )
+      if (match) openDetail(match)
+    }
+
+    openTarget(searchParams.get('enquiry'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enquiries, searchParams])
+
+  useEffect(() => {
+    function handleAdminOpen(event: Event) {
+      const href = (event as CustomEvent<{ href?: string }>).detail?.href
+      if (!href || enquiries.length === 0) return
+
+      const url = new URL(href, window.location.origin)
+      if (url.pathname !== '/admin/enquiries') return
+      const target = url.searchParams.get('enquiry')?.toLowerCase()
+      if (!target || enquiries.length === 0) return
+
+      const match = enquiries.find((enquiry) =>
+        String(enquiry.id) === target ||
+        enquiry.email.toLowerCase() === target
+      )
+      if (match) openDetail(match)
+    }
+
+    window.addEventListener('prela-admin-open', handleAdminOpen)
+    return () => window.removeEventListener('prela-admin-open', handleAdminOpen)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enquiries])
 
   function openDetail(e: Enquiry) {
     setSelected(e)

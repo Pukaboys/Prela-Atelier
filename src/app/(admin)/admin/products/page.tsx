@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { ProductVariationEditor, type ProductVariationFormValue } from '@/components/admin/ProductVariationEditor'
 import { formatPrice, type CurrencyFormatOptions } from '@/lib/helpers'
 
@@ -68,6 +69,7 @@ const EMPTY_FORM = {
 }
 
 export default function AdminProductsPage() {
+  const searchParams = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
   const [materials, setMaterials] = useState<MaterialOption[]>([])
   const [loading, setLoading] = useState(true)
@@ -103,6 +105,44 @@ export default function AdminProductsPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const openTarget = (rawTarget: string | null | undefined) => {
+      const target = rawTarget?.toLowerCase()
+      if (!target || products.length === 0) return
+
+      const match = products.find((product) =>
+        product.slug.toLowerCase() === target ||
+        String(product.id) === target
+      )
+      if (match) openEdit(match)
+    }
+
+    openTarget(searchParams.get('product'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, searchParams])
+
+  useEffect(() => {
+    function handleAdminOpen(event: Event) {
+      const href = (event as CustomEvent<{ href?: string }>).detail?.href
+      if (!href || products.length === 0) return
+
+      const url = new URL(href, window.location.origin)
+      if (url.pathname !== '/admin/products') return
+      const target = url.searchParams.get('product')?.toLowerCase()
+      if (!target || products.length === 0) return
+
+      const match = products.find((product) =>
+        product.slug.toLowerCase() === target ||
+        String(product.id) === target
+      )
+      if (match) openEdit(match)
+    }
+
+    window.addEventListener('prela-admin-open', handleAdminOpen)
+    return () => window.removeEventListener('prela-admin-open', handleAdminOpen)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products])
 
   useEffect(() => {
     fetch('/api/settings/currency')

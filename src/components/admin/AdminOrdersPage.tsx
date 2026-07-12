@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { formatPrice, type CurrencyFormatOptions } from '@/lib/helpers'
 import {
   PRODUCTION_PRIORITIES,
@@ -216,6 +217,7 @@ function ProductionTimeline({ production }: { production: ProductionManagementSu
 }
 
 export default function AdminOrdersPage() {
+  const searchParams = useSearchParams()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -234,6 +236,42 @@ export default function AdminOrdersPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const openTarget = (rawTarget: string | null | undefined) => {
+      const target = rawTarget?.toLowerCase()
+      if (!target || orders.length === 0) return
+
+      const match = orders.find((order) =>
+        order.orderCode.toLowerCase() === target ||
+        String(order.id) === target
+      )
+      if (match) setSelectedOrder(match)
+    }
+
+    openTarget(searchParams.get('order'))
+  }, [orders, searchParams])
+
+  useEffect(() => {
+    function handleAdminOpen(event: Event) {
+      const href = (event as CustomEvent<{ href?: string }>).detail?.href
+      if (!href || orders.length === 0) return
+
+      const url = new URL(href, window.location.origin)
+      if (url.pathname !== '/admin/orders') return
+      const target = url.searchParams.get('order')?.toLowerCase()
+      if (!target || orders.length === 0) return
+
+      const match = orders.find((order) =>
+        order.orderCode.toLowerCase() === target ||
+        String(order.id) === target
+      )
+      if (match) setSelectedOrder(match)
+    }
+
+    window.addEventListener('prela-admin-open', handleAdminOpen)
+    return () => window.removeEventListener('prela-admin-open', handleAdminOpen)
+  }, [orders])
 
   useEffect(() => {
     fetch('/api/settings/currency')

@@ -80,6 +80,7 @@ export function AdminAiAssistant() {
   }
 
   function openAction(href: string) {
+    window.dispatchEvent(new CustomEvent('prela-admin-open', { detail: { href } }))
     router.push(href)
     setOpen(false)
   }

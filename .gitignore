@@ -22,6 +22,7 @@ mobile/*.app/
 .DS_Store
 *.pem
 .claude/settings.local.json
+docs/POK-Terms-Prela-Atelier.pdf
 
 # debug
 *.log
