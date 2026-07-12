@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { AdminNav } from './AdminNav'
+import { AdminAiAssistant } from './AdminAiAssistant'
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -16,6 +17,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       >
         <main className="p-4 lg:p-8 min-h-screen">{children}</main>
       </div>
+      <AdminAiAssistant />
     </div>
   )
 }
