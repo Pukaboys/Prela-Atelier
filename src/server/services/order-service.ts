@@ -84,6 +84,10 @@ function isEnquiryCustomOrder(notes?: string | null) {
   return /\[\[payment_reference:bespoke(?::|-bank:)/.test(notes ?? '')
 }
 
+function isCatalogueOrder(items: Array<{ productId?: number | null }>) {
+  return items.length > 0 && items.every((item) => item.productId != null)
+}
+
 export function getProductionStage(order: OrderWithNotes): ProductionStage {
   return getProductionStageFromOrder(order)
 }
@@ -240,7 +244,7 @@ export async function createConfirmedOrder({
         shipping,
         total,
         status: 'confirmed',
-        notes: buildOrderNotes(form.notes || null, 'Design', { paymentReference }),
+        notes: buildOrderNotes(form.notes || null, 'Ready', { paymentReference }),
         promoCode: appliedPromo?.code ?? null,
         discount,
       },
@@ -490,7 +494,7 @@ export async function createPendingBankTransferOrder({
         shipping,
         total,
         status: 'pending',
-        notes: buildOrderNotes(form.notes || null, 'Design'),
+        notes: buildOrderNotes(form.notes || null, 'Ready'),
         promoCode: appliedPromo?.code ?? null,
         discount,
         items: {
@@ -551,7 +555,12 @@ export async function updateOrderStatus(orderId: number, status: OrderStatusInpu
   const order = await prisma.$transaction(async (tx) => {
     const existing = await tx.order.findUnique({
       where: { id: orderId },
-      select: { id: true, status: true, notes: true },
+      select: {
+        id: true,
+        status: true,
+        notes: true,
+        items: { select: { productId: true } },
+      },
     })
 
     if (!existing) {
@@ -560,7 +569,8 @@ export async function updateOrderStatus(orderId: number, status: OrderStatusInpu
 
     const nextStage = getProductionStage(existing)
     const shouldMarkReady =
-      status === 'shipped' && getProductionStageIndex(nextStage) < getProductionStageIndex('Ready')
+      getProductionStageIndex(nextStage) < getProductionStageIndex('Ready') &&
+      (status === 'shipped' || (status === 'confirmed' && isCatalogueOrder(existing.items)))
     const notes = shouldMarkReady ? buildOrderNotes(existing.notes, 'Ready') : undefined
 
     await tx.order.update({
