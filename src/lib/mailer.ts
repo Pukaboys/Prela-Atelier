@@ -185,6 +185,30 @@ export async function sendBankTransferInstructions(opts: {
 }
 
 // ── New order alert (to admin) ────────────────────────────────────────────────
+export async function sendBespokePaymentLinkEmail(opts: {
+  to: string
+  customerName: string
+  title: string
+  amount: number
+  paymentUrl: string
+} & MoneyDisplayOptions) {
+  const firstName = opts.customerName.split(' ')[0]
+  const body = `
+    <p class="eyebrow">Private Payment Link</p>
+    <h1 class="title">Your bespoke payment link is ready, ${firstName}.</h1>
+    <p>Thank you for working with Prela Atelier. Please use the private link below to complete payment for your custom order.</p>
+    <hr class="divider">
+    <p class="eyebrow">Payment Details</p>
+    <p><strong>${opts.title}</strong></p>
+    <p><span class="badge">${money(opts.amount, opts.currencyOptions)}</span></p>
+    <hr class="divider">
+    <a href="${opts.paymentUrl}" class="btn">Pay Securely</a>
+    <p style="margin-top:24px;">This link is private and can be used once. If you have any questions, reply to this email.</p>
+  `
+
+  await send(opts.to, `Private payment link - ${opts.title}`, layout(body))
+}
+
 export async function sendNewOrderAlert(opts: {
   customerName: string
   customerEmail: string

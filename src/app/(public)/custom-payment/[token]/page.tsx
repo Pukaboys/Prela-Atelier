@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getSettings } from '@/lib/settings'
 import { getBespokePaymentLink } from '@/server/services/bespoke-payment-link-service'
 import { CustomPaymentForm } from './CustomPaymentForm'
 
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function CustomPaymentPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
-  const link = await getBespokePaymentLink(token)
+  const [link, settings] = await Promise.all([getBespokePaymentLink(token), getSettings()])
 
   if (!link) {
     return (
@@ -24,6 +25,18 @@ export default async function CustomPaymentPage({ params }: { params: Promise<{ 
       <div className="min-h-screen bg-cream pt-36 pb-24 px-6 text-center">
         <p className="section-eyebrow">Private Payment Link</p>
         <h1 className="font-serif text-5xl text-stone mt-4">This payment has already been completed.</h1>
+        {link.orderCode ? (
+          <p className="font-sans text-stone-mid mt-4">Order reference: {link.orderCode}</p>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (link.status === 'pending') {
+    return (
+      <div className="min-h-screen bg-cream pt-36 pb-24 px-6 text-center">
+        <p className="section-eyebrow">Private Payment Link</p>
+        <h1 className="font-serif text-5xl text-stone mt-4">This order is awaiting bank transfer.</h1>
         {link.orderCode ? (
           <p className="font-sans text-stone-mid mt-4">Order reference: {link.orderCode}</p>
         ) : null}
@@ -48,6 +61,8 @@ export default async function CustomPaymentPage({ params }: { params: Promise<{ 
       amountEur={link.amountEur}
       customerName={link.customerName}
       customerEmail={link.customerEmail}
+      pokpayEnabled={settings.pokpay_enabled !== 'false'}
+      bankTransferEnabled={settings.bank_transfer_enabled !== 'false'}
     />
   )
 }

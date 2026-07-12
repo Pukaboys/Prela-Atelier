@@ -3,7 +3,7 @@ import prisma from '@/lib/db'
 
 const SETTING_KEY = 'bespoke_payment_links'
 
-export type BespokePaymentLinkStatus = 'open' | 'paid' | 'disabled'
+export type BespokePaymentLinkStatus = 'open' | 'pending' | 'paid' | 'disabled'
 
 export type BespokePaymentLink = {
   token: string
@@ -98,6 +98,31 @@ export async function markBespokePaymentLinkPaid(
     paidAt: new Date().toISOString(),
     orderCode: data.orderCode,
     pokOrderId: data.pokOrderId,
+  }
+  await saveLinks(links)
+
+  await prisma.bespokeEnquiry.update({
+    where: { id: links[index].enquiryId },
+    data: { status: 'closed' },
+  }).catch(() => null)
+
+  return links[index]
+}
+
+export async function markBespokePaymentLinkPending(
+  token: string,
+  data: { orderCode: string },
+) {
+  const links = await listBespokePaymentLinks()
+  const index = links.findIndex((link) => link.token === token)
+  if (index < 0) return null
+
+  if (links[index].status !== 'open') return links[index]
+
+  links[index] = {
+    ...links[index],
+    status: 'pending',
+    orderCode: data.orderCode,
   }
   await saveLinks(links)
 

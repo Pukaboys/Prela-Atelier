@@ -17,7 +17,7 @@ type Enquiry = {
     title: string
     description: string
     amountEur: number
-    status: 'open' | 'paid' | 'disabled'
+    status: 'open' | 'pending' | 'paid' | 'disabled'
     createdAt: string
     paidAt?: string
     orderCode?: string
@@ -45,6 +45,7 @@ export default function AdminEnquiriesPage() {
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentDescription, setPaymentDescription] = useState('')
   const [paymentMsg, setPaymentMsg] = useState<string | null>(null)
+  const [sendingLinkToken, setSendingLinkToken] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<number | null>(null)
 
@@ -64,6 +65,7 @@ export default function AdminEnquiriesPage() {
     setPaymentAmount('')
     setPaymentDescription('')
     setPaymentMsg(null)
+    setSendingLinkToken(null)
     // Auto-mark as read if new
     if (e.status === 'new') {
       updateEnquiry(e.id, { status: 'read' })
@@ -133,6 +135,25 @@ export default function AdminEnquiriesPage() {
       setPaymentMsg(data.error ?? 'Could not create payment link.')
     }
     setSaving(false)
+  }
+
+  async function emailPaymentLink(token: string) {
+    if (!selected) return
+    setSendingLinkToken(token)
+    setPaymentMsg(null)
+    const res = await fetch(`/api/admin/enquiries/${selected.id}/payment-link/${token}/send`, {
+      method: 'POST',
+    })
+    const data = await res.json().catch(() => ({}))
+    setPaymentMsg(res.ok ? 'Payment link sent by email.' : data.error ?? 'Could not send payment link.')
+    setSendingLinkToken(null)
+  }
+
+  function paymentStatusText(link: NonNullable<Enquiry['paymentLinks']>[number]) {
+    if (link.status === 'paid') return `Paid${link.orderCode ? ` | ${link.orderCode}` : ''}`
+    if (link.status === 'pending') return `Awaiting bank transfer${link.orderCode ? ` | ${link.orderCode}` : ''}`
+    if (link.status === 'disabled') return 'Disabled'
+    return 'Open'
   }
 
   const q = search.toLowerCase()
@@ -358,16 +379,26 @@ export default function AdminEnquiriesPage() {
                           <div>
                             <p className="font-sans text-sm text-stone">{link.title} - EUR {link.amountEur}</p>
                             <p className="font-sans text-xs text-stone-pale mt-1">
-                              {link.status === 'paid' ? `Paid${link.orderCode ? ` | ${link.orderCode}` : ''}` : 'Open'} | {paymentUrl(link.token)}
+                              {paymentStatusText(link)} | {paymentUrl(link.token)}
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => navigator.clipboard.writeText(paymentUrl(link.token)).catch(() => null)}
-                            className="text-xs text-gold hover:text-gold-dark font-sans uppercase tracking-wider"
-                          >
-                            Copy
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => emailPaymentLink(link.token)}
+                              disabled={sendingLinkToken === link.token}
+                              className="text-xs text-gold hover:text-gold-dark font-sans uppercase tracking-wider disabled:opacity-60"
+                            >
+                              {sendingLinkToken === link.token ? 'Sending...' : 'Email'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigator.clipboard.writeText(paymentUrl(link.token)).catch(() => null)}
+                              className="text-xs text-gold hover:text-gold-dark font-sans uppercase tracking-wider"
+                            >
+                              Copy
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

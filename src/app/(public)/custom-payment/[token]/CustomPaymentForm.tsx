@@ -10,6 +10,8 @@ type Props = {
   amountEur: number
   customerName: string
   customerEmail: string
+  pokpayEnabled: boolean
+  bankTransferEnabled: boolean
 }
 
 export function CustomPaymentForm({
@@ -19,6 +21,8 @@ export function CustomPaymentForm({
   amountEur,
   customerName,
   customerEmail,
+  pokpayEnabled,
+  bankTransferEnabled,
 }: Props) {
   const [form, setForm] = useState({
     name: customerName,
@@ -31,19 +35,25 @@ export function CustomPaymentForm({
     notes: '',
   })
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<'pok' | 'bank' | null>(null)
 
   function set(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  async function startPayment() {
+  function validateForm() {
     if (!form.name.trim() || !form.email.includes('@') || !form.address.trim() || !form.city.trim() || !form.postcode.trim()) {
       setError('Please complete your contact and shipping details.')
-      return
+      return false
     }
 
-    setLoading(true)
+    return true
+  }
+
+  async function startPayment() {
+    if (!validateForm()) return
+
+    setLoading('pok')
     setError('')
     try {
       const res = await fetch(`/api/bespoke-payment/${token}/start`, {
@@ -60,7 +70,31 @@ export function CustomPaymentForm({
     } catch {
       setError('Network error. Please try again.')
     } finally {
-      setLoading(false)
+      setLoading(null)
+    }
+  }
+
+  async function startBankTransfer() {
+    if (!validateForm()) return
+
+    setLoading('bank')
+    setError('')
+    try {
+      const res = await fetch(`/api/bespoke-payment/${token}/bank-transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json() as { orderCode?: string; error?: string }
+      if (!res.ok || !data.orderCode) {
+        setError(data.error ?? 'Could not create bank transfer order.')
+        return
+      }
+      window.location.href = `/order-confirmed?order=${encodeURIComponent(data.orderCode)}`
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setLoading(null)
     }
   }
 
@@ -112,15 +146,32 @@ export function CustomPaymentForm({
 
           {error && <div className="flash-error mt-6">{error}</div>}
 
-          <button
-            onClick={startPayment}
-            disabled={loading}
-            className="btn-primary w-full mt-8 disabled:opacity-60"
-          >
-            {loading ? 'Redirecting to POK...' : 'Pay with POK'}
-          </button>
+          {(pokpayEnabled || bankTransferEnabled) ? (
+            <div className="mt-8 space-y-3">
+              {pokpayEnabled ? (
+                <button
+                  onClick={startPayment}
+                  disabled={loading !== null}
+                  className="btn-primary w-full disabled:opacity-60"
+                >
+                  {loading === 'pok' ? 'Redirecting to POK...' : 'Pay with POK'}
+                </button>
+              ) : null}
+              {bankTransferEnabled ? (
+                <button
+                  onClick={startBankTransfer}
+                  disabled={loading !== null}
+                  className="btn-ghost w-full disabled:opacity-60"
+                >
+                  {loading === 'bank' ? 'Creating bank transfer order...' : 'Pay by Bank Transfer'}
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flash-error mt-8">Payment methods are temporarily unavailable.</div>
+          )}
           <p className="text-xs font-sans text-stone-pale text-center mt-3">
-            This private link can be used once. After successful payment it will close automatically.
+            This private link can be used once. After online payment or bank transfer order creation it will close automatically.
           </p>
         </div>
       </div>
