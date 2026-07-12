@@ -146,7 +146,7 @@ export interface ClientDictionary {
     deliveryAddress: string
     note: string
     items: string
-    statusLabels: Record<'pending' | 'confirmed' | 'shipped' | 'cancelled', string>
+    statusLabels: Record<'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled', string>
     productionStageLabels: Record<'Design' | 'Cutting' | 'Polishing' | 'Finishing' | 'Ready', string>
   }
   customOrderBuilder: {
@@ -349,7 +349,7 @@ const dictionaries: Record<LanguageCode, ClientDictionary> = {
       deliveryAddress: 'Delivery Address',
       note: 'Note',
       items: 'Items',
-      statusLabels: { pending: 'Order Received', confirmed: 'Confirmed', shipped: 'Shipped', cancelled: 'Cancelled' },
+      statusLabels: { pending: 'Order Received', confirmed: 'Confirmed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' },
       productionStageLabels: { Design: 'Design', Cutting: 'Cutting', Polishing: 'Polishing', Finishing: 'Finishing', Ready: 'Ready' },
     },
     customOrderBuilder: {
@@ -561,7 +561,7 @@ const dictionaries: Record<LanguageCode, ClientDictionary> = {
       deliveryAddress: 'Adresa e Dergeses',
       note: 'Shenim',
       items: 'Artikujt',
-      statusLabels: { pending: 'Porosia u mor', confirmed: 'Konfirmuar', shipped: 'Derguar', cancelled: 'Anuluar' },
+      statusLabels: { pending: 'Porosia u mor', confirmed: 'Konfirmuar', shipped: 'Derguar', delivered: 'Dorezuar', cancelled: 'Anuluar' },
       productionStageLabels: { Design: 'Dizajni', Cutting: 'Prerja', Polishing: 'Polirimi', Finishing: 'Perfundimi', Ready: 'Gati' },
     },
     customOrderBuilder: {

@@ -44,13 +44,14 @@ type Order = {
   items: OrderItem[]
 }
 
-const ALL_STATUSES = ['pending', 'confirmed', 'shipped', 'cancelled'] as const
+const ALL_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
 type Status = typeof ALL_STATUSES[number]
 
 const STATUS_COLORS: Record<Status, string> = {
   pending: 'status-pending',
   confirmed: 'status-confirmed',
   shipped: 'status-shipped',
+  delivered: 'status-delivered',
   cancelled: 'status-cancelled',
 }
 
@@ -58,6 +59,7 @@ const STATUS_LABELS: Record<Status, string> = {
   pending: 'Pending',
   confirmed: 'Confirmed',
   shipped: 'Shipped',
+  delivered: 'Delivered',
   cancelled: 'Trash',
 }
 
@@ -304,7 +306,12 @@ export default function AdminOrdersPage() {
   const q = search.toLowerCase()
   const money = (value: number) => formatPrice(value, currencyOptions)
   const delayedOrders = useMemo(
-    () => orders.filter((order) => order.production.isDelayed && order.status !== 'shipped' && order.status !== 'cancelled'),
+    () => orders.filter((order) =>
+      order.production.isDelayed &&
+      order.status !== 'shipped' &&
+      order.status !== 'delivered' &&
+      order.status !== 'cancelled',
+    ),
     [orders],
   )
   const filtered = orders.filter((order) =>

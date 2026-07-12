@@ -570,7 +570,11 @@ export async function updateOrderStatus(orderId: number, status: OrderStatusInpu
     const nextStage = getProductionStage(existing)
     const shouldMarkReady =
       getProductionStageIndex(nextStage) < getProductionStageIndex('Ready') &&
-      (status === 'shipped' || (status === 'confirmed' && isCatalogueOrder(existing.items)))
+      (
+        status === 'shipped' ||
+        status === 'delivered' ||
+        (status === 'confirmed' && isCatalogueOrder(existing.items))
+      )
     const notes = shouldMarkReady ? buildOrderNotes(existing.notes, 'Ready') : undefined
 
     await tx.order.update({

@@ -11,7 +11,7 @@ import {
 } from '@/lib/production-workflow'
 import { useLanguage } from '@/components/providers/LanguageProvider'
 
-const STATUS_STEPS = ['pending', 'confirmed', 'shipped'] as const
+const STATUS_STEPS = ['pending', 'confirmed', 'shipped', 'delivered'] as const
 
 interface OrderResult {
   orderCode: string
@@ -90,9 +90,7 @@ export default function TrackOrderPageContent() {
   const currentStatusIdx = order
     ? order.status === 'cancelled'
       ? -1
-      : order.status === 'delivered'
-        ? STATUS_STEPS.indexOf('shipped')
-        : STATUS_STEPS.indexOf(order.status as typeof STATUS_STEPS[number])
+      : STATUS_STEPS.indexOf(order.status as typeof STATUS_STEPS[number])
     : -1
   const currentProductionStageIdx = order ? getProductionStageIndex(order.productionStage) : -1
   const locale = language === 'sq' ? 'sq-AL' : 'en-GB'
@@ -162,10 +160,12 @@ export default function TrackOrderPageContent() {
                   className={`inline-block text-xs font-sans uppercase tracking-widest px-3 py-1 border ${
                     order.status === 'cancelled'
                       ? 'text-red-600 border-red-300 bg-red-50'
-                      : 'text-gold border-gold bg-gold/5'
+                      : order.status === 'delivered'
+                        ? 'text-green-700 border-green-300 bg-green-50'
+                        : 'text-gold border-gold bg-gold/5'
                   }`}
                 >
-                  {dictionary.trackOrder.statusLabels[(order.status === 'delivered' ? 'shipped' : order.status) as keyof typeof dictionary.trackOrder.statusLabels] ?? order.status}
+                  {dictionary.trackOrder.statusLabels[order.status as keyof typeof dictionary.trackOrder.statusLabels] ?? order.status}
                 </span>
               </div>
               <p className="font-sans text-sm text-stone-mid">

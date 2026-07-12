@@ -58,6 +58,7 @@ export default async function AdminDashboardPage() {
     pending: 'status-pending',
     confirmed: 'status-confirmed',
     shipped: 'status-shipped',
+    delivered: 'status-delivered',
     cancelled: 'status-cancelled',
   }
 
@@ -119,25 +120,21 @@ export default async function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {dashboard.recentOrders.map((order) => {
-                  const displayStatus = order.status === 'delivered' ? 'shipped' : order.status
-
-                  return (
-                    <tr key={order.id}>
-                      <td className="font-mono text-xs text-gold">{order.orderCode}</td>
-                      <td>{order.customerName}</td>
-                      <td>{formatPrice(order.total, currencyOptions)}</td>
-                      <td>
-                        <span className={statusClass[displayStatus] ?? 'badge'}>
-                          {displayStatus}
-                        </span>
-                      </td>
-                      <td className="text-stone-mid text-xs">
-                        {new Date(order.createdAt).toLocaleDateString('fr-FR')}
-                      </td>
-                    </tr>
-                  )
-                })}
+                {dashboard.recentOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td className="font-mono text-xs text-gold">{order.orderCode}</td>
+                    <td>{order.customerName}</td>
+                    <td>{formatPrice(order.total, currencyOptions)}</td>
+                    <td>
+                      <span className={statusClass[order.status] ?? 'badge'}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="text-stone-mid text-xs">
+                      {new Date(order.createdAt).toLocaleDateString('fr-FR')}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
