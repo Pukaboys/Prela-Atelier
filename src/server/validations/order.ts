@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { PRODUCTION_PRIORITIES, PRODUCTION_STAGES } from '@/lib/production-workflow'
 
-export const ORDER_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
+export const ORDER_STATUSES = ['pending', 'confirmed', 'shipped', 'cancelled'] as const
 export const CHECKOUT_CURRENCIES = ['EUR', 'USD', 'GBP'] as const
 
 export const checkoutCartItemSchema = z.object({

@@ -110,7 +110,6 @@ export type OrderStatusType =
   | 'pending'
   | 'confirmed'
   | 'shipped'
-  | 'delivered'
   | 'cancelled'
 
 export type EnquiryStatusType = 'new' | 'read' | 'replied' | 'closed'

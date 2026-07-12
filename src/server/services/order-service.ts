@@ -561,12 +561,7 @@ export async function updateOrderStatus(orderId: number, status: OrderStatusInpu
     const nextStage = getProductionStage(existing)
     const shouldMarkReady =
       status === 'shipped' && getProductionStageIndex(nextStage) < getProductionStageIndex('Ready')
-    const notes =
-      status === 'delivered'
-        ? buildOrderNotes(existing.notes, 'Delivered')
-        : shouldMarkReady
-          ? buildOrderNotes(existing.notes, 'Ready')
-          : undefined
+    const notes = shouldMarkReady ? buildOrderNotes(existing.notes, 'Ready') : undefined
 
     await tx.order.update({
       where: { id: orderId },
@@ -624,7 +619,6 @@ export async function updateProductionStage(orderId: number, stage: ProductionSt
     where: { id: orderId },
     data: {
       notes: buildOrderNotes(existing.notes, stage),
-      ...(stage === 'Delivered' ? { status: 'delivered' } : {}),
     },
     include: { items: true },
   })

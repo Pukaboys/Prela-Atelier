@@ -58,7 +58,6 @@ export default async function AdminDashboardPage() {
     pending: 'status-pending',
     confirmed: 'status-confirmed',
     shipped: 'status-shipped',
-    delivered: 'status-delivered',
     cancelled: 'status-cancelled',
   }
 
@@ -120,30 +119,35 @@ export default async function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {dashboard.recentOrders.map((order) => (
-                  <tr key={order.id}>
-                    <td className="font-mono text-xs text-gold">{order.orderCode}</td>
-                    <td>{order.customerName}</td>
-                    <td>{formatPrice(order.total, currencyOptions)}</td>
-                    <td>
-                      <span className={statusClass[order.status] ?? 'badge'}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="text-stone-mid text-xs">
-                      {new Date(order.createdAt).toLocaleDateString('fr-FR')}
-                    </td>
-                  </tr>
-                ))}
+                {dashboard.recentOrders.map((order) => {
+                  const displayStatus = order.status === 'delivered' ? 'shipped' : order.status
+
+                  return (
+                    <tr key={order.id}>
+                      <td className="font-mono text-xs text-gold">{order.orderCode}</td>
+                      <td>{order.customerName}</td>
+                      <td>{formatPrice(order.total, currencyOptions)}</td>
+                      <td>
+                        <span className={statusClass[displayStatus] ?? 'badge'}>
+                          {displayStatus}
+                        </span>
+                      </td>
+                      <td className="text-stone-mid text-xs">
+                        {new Date(order.createdAt).toLocaleDateString('fr-FR')}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
         {[
           { href: '/admin/products', label: 'Manage Products' },
+          { href: '/admin/inventory', label: 'Manage Inventory' },
           { href: '/admin/orders', label: 'Manage Orders' },
           { href: '/admin/materials', label: 'Manage Stones' },
           { href: '/admin/enquiries', label: 'View Enquiries' },

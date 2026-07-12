@@ -4,7 +4,7 @@ import { getAnalyticsIntelligence } from '@/server/services/analytics-intelligen
 import { moveStalePendingOrdersToTrash } from '@/server/services/order-service'
 
 const REVENUE_STATUSES = new Set(['confirmed', 'shipped', 'delivered'])
-const ORDER_STATUS_ORDER = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
+const ORDER_STATUS_ORDER = ['pending', 'confirmed', 'shipped', 'cancelled'] as const
 
 type DashboardOrder = {
   id: number
@@ -131,7 +131,8 @@ function buildOrderStatusBreakdown(orders: DashboardOrder[]) {
   }
 
   for (const order of orders) {
-    counts.set(order.status, (counts.get(order.status) ?? 0) + 1)
+    const status = order.status === 'delivered' ? 'shipped' : order.status
+    counts.set(status, (counts.get(status) ?? 0) + 1)
   }
 
   return ORDER_STATUS_ORDER.map((status) => ({

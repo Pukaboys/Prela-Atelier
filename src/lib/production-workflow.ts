@@ -4,7 +4,6 @@ export const PRODUCTION_STAGES = [
   'Polishing',
   'Finishing',
   'Ready',
-  'Delivered',
 ] as const
 
 export type ProductionStage = typeof PRODUCTION_STAGES[number]
@@ -19,7 +18,6 @@ export const PRODUCTION_STAGE_LABELS: Record<ProductionStage, string> = {
   Polishing: 'Polishing',
   Finishing: 'Finishing',
   Ready: 'Ready',
-  Delivered: 'Delivered',
 }
 
 export const PRODUCTION_PRIORITY_LABELS: Record<ProductionPriority, string> = {
@@ -33,7 +31,6 @@ export const PRODUCTION_STAGE_ESTIMATES_DAYS: Record<ProductionStage, number> = 
   Polishing: 2,
   Finishing: 2,
   Ready: 1,
-  Delivered: 0,
 }
 
 export const PRODUCTION_METADATA_PATTERN =
@@ -162,12 +159,10 @@ export function getProductionStageFromOrder(order: {
   notes?: string | null
   status?: string | null
 }): ProductionStage {
-  if (order.status === 'delivered') return 'Delivered'
-
   const storedStage = extractProductionStage(order.notes)
   if (storedStage) return storedStage
 
-  if (order.status === 'shipped') return 'Ready'
+  if (order.status === 'shipped' || order.status === 'delivered') return 'Ready'
 
   return 'Design'
 }
@@ -220,6 +215,7 @@ export function buildProductionManagementSummary(order: {
     estimatedStageDays > 0 ? addDays(stageStartedDate, estimatedStageDays).toISOString() : null
   const daysInCurrentStage = daysBetween(stageStartedDate, now)
   const isDelayed =
+    order.status !== 'shipped' &&
     order.status !== 'delivered' &&
     estimatedStageDays > 0 &&
     daysInCurrentStage > estimatedStageDays
@@ -230,7 +226,7 @@ export function buildProductionManagementSummary(order: {
     0,
   )
   const estimatedCompletionAt =
-    stage === 'Delivered'
+    stage === 'Ready'
       ? stageStartedDate.toISOString()
       : addDays(now, remainingCurrentStageDays + remainingFutureDays).toISOString()
   const eventByStage = new Map<ProductionStage, ProductionEvent>()
@@ -255,6 +251,7 @@ export function buildProductionManagementSummary(order: {
       index < currentIndex ? 'complete' : index === currentIndex ? 'current' : 'upcoming'
     const delayed =
       status === 'current' &&
+      order.status !== 'shipped' &&
       order.status !== 'delivered' &&
       estimatedDays > 0 &&
       startedDate !== null &&

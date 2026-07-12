@@ -29,6 +29,20 @@ const NAV_ITEMS = [
     exact: false,
   },
   {
+    href: '/admin/inventory',
+    label: 'Inventory',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7h18" />
+        <path d="M5 7l1 13h12l1-13" />
+        <path d="M9 11v5" />
+        <path d="M15 11v5" />
+        <path d="M8 7a4 4 0 018 0" />
+      </svg>
+    ),
+    exact: false,
+  },
+  {
     href: '/admin/orders',
     label: 'Orders',
     icon: (

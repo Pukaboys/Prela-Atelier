@@ -322,7 +322,7 @@ async function buildSalesReport(filters: ReportFilters): Promise<ReportDocument>
 
   return {
     title: 'Sales Report',
-    subtitle: 'Confirmed, shipped, and delivered order revenue',
+    subtitle: 'Confirmed and shipped order revenue',
     summary: appendRangeSummary([
       `Revenue orders: ${revenueOrders.length}`,
       `Gross revenue EUR: ${totalRevenue.toFixed(2)}`,
@@ -334,7 +334,7 @@ async function buildSalesReport(filters: ReportFilters): Promise<ReportDocument>
       Date: dateOnly(order.createdAt),
       'Order Code': order.orderCode,
       Customer: order.customerName,
-      Status: order.status,
+      Status: order.status === 'delivered' ? 'shipped' : order.status,
       'Subtotal EUR': money(order.subtotal),
       'Shipping EUR': money(order.shipping),
       'Discount EUR': money(order.discount),
@@ -353,8 +353,7 @@ async function buildOrdersReport(filters: ReportFilters): Promise<ReportDocument
       `Total orders: ${orders.length}`,
       `Pending: ${orders.filter((order) => order.status === 'pending').length}`,
       `Confirmed: ${orders.filter((order) => order.status === 'confirmed').length}`,
-      `Shipped: ${orders.filter((order) => order.status === 'shipped').length}`,
-      `Delivered: ${orders.filter((order) => order.status === 'delivered').length}`,
+      `Shipped: ${orders.filter((order) => order.status === 'shipped' || order.status === 'delivered').length}`,
       `Cancelled: ${orders.filter((order) => order.status === 'cancelled').length}`,
     ], filters),
     headers: [
@@ -375,7 +374,7 @@ async function buildOrdersReport(filters: ReportFilters): Promise<ReportDocument
       Customer: order.customerName,
       Email: order.customerEmail,
       Country: order.country,
-      Status: order.status,
+      Status: order.status === 'delivered' ? 'shipped' : order.status,
       Items: order.items.map((item) => item.name).join(' | '),
       Quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       'Total EUR': money(order.total),
