@@ -572,7 +572,7 @@ export async function updateOrderStatus(orderId: number, status: OrderStatusInpu
         id: true,
         status: true,
         notes: true,
-        items: { select: { productId: true } },
+        items: { select: { productId: true, quantity: true, name: true } },
       },
     })
 
