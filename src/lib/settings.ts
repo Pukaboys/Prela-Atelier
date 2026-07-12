@@ -16,6 +16,7 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   currency_usd_rate: '1.09',
   currency_gbp_rate: '0.86',
   custom_order_production_multiplier: '0.65',
+  pokpay_enabled: 'true',
   bank_transfer_enabled: 'true',
   bank_account_name: '',
   bank_iban: '',

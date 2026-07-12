@@ -32,6 +32,7 @@ const COUNTRIES = [
 interface Props {
   cart: CartItem[]
   subtotal: number
+  pokpayEnabled: boolean
   bankTransferEnabled: boolean
   currencyOptions?: CurrencyFormatOptions
 }
@@ -47,7 +48,7 @@ interface FormState {
   notes: string
 }
 
-export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOptions }: Props) {
+export function CheckoutForm({ cart, subtotal, pokpayEnabled, bankTransferEnabled, currencyOptions }: Props) {
   const { dictionary } = useLanguage()
 
   const [form, setForm] = useState<FormState>({
@@ -278,26 +279,33 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
             <div className="mt-10">
               <h2 className="font-serif text-2xl text-stone mb-6">{dictionary.checkout.payment}</h2>
 
-              <button
-                onClick={handlePokpay}
-                disabled={pokpayProcessing}
-                className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {pokpayProcessing ? 'Redirecting to POK...' : 'Pay with POK'}
-              </button>
-              <p className="text-xs font-sans text-stone-pale text-center mt-2">
-                Secure payment powered by POK Albania.
-              </p>
+              {pokpayEnabled && (
+                <>
+                  <button
+                    onClick={handlePokpay}
+                    disabled={pokpayProcessing}
+                    className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {pokpayProcessing ? 'Redirecting to POK...' : 'Pay with POK'}
+                  </button>
+                  <p className="text-xs font-sans text-stone-pale text-center mt-2">
+                    Secure payment powered by POK Albania.
+                  </p>
+                </>
+              )}
+
+              {pokpayEnabled && bankTransferEnabled && (
+                <div className="flex items-center gap-4 my-6">
+                  <div className="h-px bg-beige flex-1" />
+                  <span className="font-sans text-xs uppercase tracking-[0.2em] text-stone-pale">
+                    {dictionary.checkout.or}
+                  </span>
+                  <div className="h-px bg-beige flex-1" />
+                </div>
+              )}
 
               {bankTransferEnabled && (
                 <>
-                  <div className="flex items-center gap-4 my-6">
-                    <div className="h-px bg-beige flex-1" />
-                    <span className="font-sans text-xs uppercase tracking-[0.2em] text-stone-pale">
-                      {dictionary.checkout.or}
-                    </span>
-                    <div className="h-px bg-beige flex-1" />
-                  </div>
                   <button
                     onClick={handleBankTransfer}
                     disabled={processing}
@@ -309,6 +317,12 @@ export function CheckoutForm({ cart, subtotal, bankTransferEnabled, currencyOpti
                     {dictionary.checkout.bankTransferNote}
                   </p>
                 </>
+              )}
+
+              {!pokpayEnabled && !bankTransferEnabled && (
+                <div className="border border-beige bg-white px-4 py-3 font-sans text-sm text-stone-mid">
+                  Checkout is temporarily unavailable. Please contact us to complete your order.
+                </div>
               )}
             </div>
           </div>

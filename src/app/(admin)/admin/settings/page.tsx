@@ -89,6 +89,11 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    title: 'Payment Methods',
+    description: 'Control which payment methods customers can use at checkout.',
+    fields: [],
+  },
+  {
     title: 'Bank Transfer',
     description: 'Bank details used for manual checkout emails and invoices.',
     fields: [
@@ -426,18 +431,52 @@ export default function AdminSettingsPage() {
             </div>
             <div className="p-6 space-y-5">
               {section.title === 'Bank Transfer' && (
-                <label className="flex items-center justify-between gap-4 border border-beige bg-cream/40 px-4 py-3">
-                  <span>
-                    <span className="block font-sans text-sm font-medium text-stone">Enable bank transfer checkout</span>
-                    <span className="block font-sans text-xs text-stone-pale mt-1">Shows the manual bank-transfer button at checkout.</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 accent-gold"
-                    checked={settings.bank_transfer_enabled !== 'false'}
-                    onChange={(e) => handleSettingChange('bank_transfer_enabled', e.target.checked ? 'true' : 'false')}
-                  />
-                </label>
+                <p className="text-xs text-stone-pale font-sans -mt-1">
+                  These details are shown only when bank transfer is enabled in Payment Methods.
+                </p>
+              )}
+              {section.title === 'Payment Methods' && (
+                <div className="space-y-3">
+                  {[
+                    {
+                      key: 'pokpay_enabled',
+                      title: 'POK Albania',
+                      description: 'Shows the POK payment button at checkout and allows POK order creation.',
+                    },
+                    {
+                      key: 'bank_transfer_enabled',
+                      title: 'Bank transfer',
+                      description: 'Shows the manual bank-transfer button and sends bank-transfer instructions.',
+                    },
+                  ].map((method) => {
+                    const enabled = settings[method.key] !== 'false'
+                    return (
+                      <label
+                        key={method.key}
+                        className="flex items-center justify-between gap-4 border border-beige bg-cream/40 px-4 py-3"
+                      >
+                        <span>
+                          <span className="block font-sans text-sm font-medium text-stone">{method.title}</span>
+                          <span className="block font-sans text-xs text-stone-pale mt-1">{method.description}</span>
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={enabled}
+                          onClick={() => handleSettingChange(method.key, enabled ? 'false' : 'true')}
+                          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${enabled ? 'bg-stone' : 'bg-beige-dark'}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </label>
+                    )
+                  })}
+                  {settings.pokpay_enabled === 'false' && settings.bank_transfer_enabled === 'false' && (
+                    <p className="text-xs text-red-600 font-sans">
+                      At least one payment method should stay active, otherwise checkout cannot accept orders.
+                    </p>
+                  )}
+                </div>
               )}
               {section.fields.map((field) => (
                 <div key={field.key}>

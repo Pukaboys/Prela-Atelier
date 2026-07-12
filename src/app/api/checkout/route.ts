@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { normalizeCartItems } from '@/lib/cart'
 import { getSession } from '@/lib/session'
+import { getSettings } from '@/lib/settings'
 import {
   sendBankTransferInstructions,
   sendNewOrderAlert,
@@ -18,6 +19,11 @@ export async function POST(request: NextRequest) {
     }
 
     const session = await getSession()
+    const settings = await getSettings()
+    if (settings.bank_transfer_enabled === 'false') {
+      return NextResponse.json({ error: 'Bank transfer checkout is currently disabled.' }, { status: 403 })
+    }
+
     const cart = normalizeCartItems(session.cart)
     if (cart.length === 0) {
       return NextResponse.json({ error: 'Your cart is empty.' }, { status: 400 })

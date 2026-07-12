@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { buildOrderItemName, normalizeCartItems } from '@/lib/cart'
 import { getSession } from '@/lib/session'
+import { getSettings } from '@/lib/settings'
 import { createPokOrder, PokPayApiError, PokPayConfigError } from '@/lib/pokpay'
 import { assertCartInventoryAvailable, InventoryError } from '@/server/services/inventory-service'
 import { calculateOrderAmounts } from '@/server/services/order-service'
@@ -52,6 +53,11 @@ export async function POST(request: NextRequest) {
     }
 
     const session = await getSession()
+    const settings = await getSettings()
+    if (settings.pokpay_enabled === 'false') {
+      return NextResponse.json({ error: 'POK payments are currently disabled.' }, { status: 403 })
+    }
+
     const cart = normalizeCartItems(session.cart)
     if (cart.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
