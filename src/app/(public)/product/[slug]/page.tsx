@@ -144,14 +144,18 @@ export default async function ProductPage({ params }: Props) {
     storedConfig,
     materialsById,
   })
+  const baseImagePaths = [...new Set([
+    raw.imagePath,
+    ...raw.images.map((image) => image.url),
+  ].filter((imagePath): imagePath is string => Boolean(imagePath)))]
   const product = {
     ...raw,
     priceEur: Number(raw.priceEur),
-    images: raw.images.map((image) => ({
-      id: image.id,
-      path: productImageUrl(image.url),
+    images: baseImagePaths.map((imagePath, index) => ({
+      id: raw.images.find((image) => image.url === imagePath)?.id ?? -index - 1,
+      path: productImageUrl(imagePath),
       alt: raw.name,
-      position: image.sortOrder,
+      position: index,
     })),
     material: raw.material ? {
       id: raw.material.id,
