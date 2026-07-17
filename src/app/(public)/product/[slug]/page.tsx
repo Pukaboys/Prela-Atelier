@@ -149,7 +149,7 @@ export default async function ProductPage({ params }: Props) {
     priceEur: Number(raw.priceEur),
     images: raw.images.map((image) => ({
       id: image.id,
-      path: image.url.startsWith('http') ? image.url : `${APP_URL}${productImageUrl(image.url)}`,
+      path: productImageUrl(image.url),
       alt: raw.name,
       position: image.sortOrder,
     })),
@@ -157,7 +157,7 @@ export default async function ProductPage({ params }: Props) {
       id: raw.material.id,
       name: raw.material.name,
       description: raw.material.description,
-      imagePath: raw.material.imagePath ? (raw.material.imagePath.startsWith('http') ? raw.material.imagePath : `${APP_URL}${productImageUrl(raw.material.imagePath)}`) : null,
+      imagePath: raw.material.imagePath ? productImageUrl(raw.material.imagePath) : null,
       origin: raw.material.origin,
       hardness: raw.material.hardness,
       tone: raw.material.tone,
@@ -170,7 +170,7 @@ export default async function ProductPage({ params }: Props) {
       priceOverrideEur: resolved.defaultVariation.priceOverrideEUR,
       images: resolved.defaultVariation.images.map((imagePath, index) => ({
         id: index,
-        path: imagePath.startsWith('http') ? imagePath : `${APP_URL}${productImageUrl(imagePath)}`,
+        path: productImageUrl(imagePath),
         alt: raw.name,
         position: index,
       })),
@@ -182,7 +182,7 @@ export default async function ProductPage({ params }: Props) {
         imagePath: resolved.defaultVariation.material.imagePath
           ? (resolved.defaultVariation.material.imagePath.startsWith('http')
             ? resolved.defaultVariation.material.imagePath
-            : `${APP_URL}${productImageUrl(resolved.defaultVariation.material.imagePath)}`)
+            : productImageUrl(resolved.defaultVariation.material.imagePath))
           : null,
         origin: resolved.defaultVariation.material.origin,
         hardness: resolved.defaultVariation.material.hardness,
@@ -197,7 +197,7 @@ export default async function ProductPage({ params }: Props) {
       priceOverrideEur: variation.priceOverrideEUR,
       images: variation.images.map((imagePath, index) => ({
         id: index,
-        path: imagePath.startsWith('http') ? imagePath : `${APP_URL}${productImageUrl(imagePath)}`,
+        path: productImageUrl(imagePath),
         alt: raw.name,
         position: index,
       })),
@@ -209,7 +209,7 @@ export default async function ProductPage({ params }: Props) {
         imagePath: variation.material.imagePath
           ? (variation.material.imagePath.startsWith('http')
             ? variation.material.imagePath
-            : `${APP_URL}${productImageUrl(variation.material.imagePath)}`)
+            : productImageUrl(variation.material.imagePath))
           : null,
         origin: variation.material.origin,
         hardness: variation.material.hardness,
